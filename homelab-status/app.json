@@ -1,0 +1,29 @@
+{
+  "app_id": "com.example.homelab_status",
+  "name": "Homelab",
+  "creator": "NanoKVM Community",
+  "create_time": "2026-10-17",
+  "version": "0.1.0",
+  "desc": "Status board that checks every service in a Dashy config, with mDNS support for .local hosts.",
+  "category": "utility",
+  "env": {
+    "DASHY_URL": {
+      "label": "Dashy URL",
+      "description": "Dashy address such as http://raspberrypi.local:4000, or a direct link to its conf.yml. Leave empty to use a conf.yml bundled in the App directory.",
+      "required": false,
+      "default": ""
+    },
+    "CHECK_INTERVAL": {
+      "label": "Check interval (seconds)",
+      "description": "How often every service is checked. Minimum 5.",
+      "required": false,
+      "default": "60"
+    },
+    "CHECK_TIMEOUT": {
+      "label": "Check timeout (seconds)",
+      "description": "How long to wait for a service before marking it down.",
+      "required": false,
+      "default": "6"
+    }
+  }
+}

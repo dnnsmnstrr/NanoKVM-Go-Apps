@@ -1,0 +1,41 @@
+{
+  "app_id": "com.example.device_dashboard",
+  "name": "Device",
+  "creator": "NanoKVM Community",
+  "create_time": "2026-10-17",
+  "version": "0.1.0",
+  "desc": "NanoKVM system health, network status and QR codes for the web UI, Wi-Fi and custom links.",
+  "category": "utility",
+  "env": {
+    "WIFI_PASSWORD": {
+      "label": "Wi-Fi password",
+      "description": "Optional. When set, adds a QR code that joins phones to the Wi-Fi network.",
+      "required": false,
+      "secret": true
+    },
+    "WIFI_SSID": {
+      "label": "Wi-Fi network name",
+      "description": "Network for the Wi-Fi QR code. Leave empty to use the network the NanoKVM is on.",
+      "required": false,
+      "default": ""
+    },
+    "WIFI_SECURITY": {
+      "label": "Wi-Fi security",
+      "description": "WPA (also WPA2/WPA3), WEP, or nopass.",
+      "required": false,
+      "default": "WPA"
+    },
+    "WEB_UI_URL": {
+      "label": "Web UI URL",
+      "description": "Optional override for the Web UI QR code, for example a DNS name. Defaults to https:// plus the current IP.",
+      "required": false,
+      "default": ""
+    },
+    "QR_LINKS": {
+      "label": "Extra QR links",
+      "description": "Comma-separated links shown as extra QR pages, optionally labelled: Dashy=http://raspberrypi.local:4000, https://example.com",
+      "required": false,
+      "default": ""
+    }
+  }
+}

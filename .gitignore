@@ -3,3 +3,6 @@
 !.env.example
 macro-pad/.env
 macro-pad/*.zip
+homelab-status/conf.yml
+homelab-status/.dashy-cache.yml
+__pycache__/

@@ -66,13 +66,19 @@ python3 -m json.tool <app>/app.json >/dev/null
 python3 -m py_compile <app>/main.py
 ```
 
-The only unit tests are in `voice-bridge/`. They stub `appbase`, `aiortc`, `av`
-and `websockets` in `sys.modules`, so they run off-device:
+Unit tests live in `voice-bridge/`, `homelab-status/` and `device-dashboard/`.
+They stub `appbase` (and, for `voice-bridge`, `aiortc`, `av` and `websockets`)
+in `sys.modules`, so they run off-device:
 
 ```sh
 python3 -m unittest discover -s voice-bridge -p 'test_*.py'
 python3 -m unittest discover -s voice-bridge -p 'test_*.py' -k test_latest_app_manifest
+python3 -m unittest discover -s homelab-status -p 'test_*.py'
+python3 -m unittest discover -s device-dashboard -p 'test_*.py'
 ```
+
+`homelab-status` reads a gitignored `homelab-status/conf.yml` (Dashy format)
+when `DASHY_URL` is not set. Do not commit it.
 
 ## Deploying to the device
 
