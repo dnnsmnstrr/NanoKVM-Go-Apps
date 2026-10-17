@@ -100,7 +100,8 @@ microphone icons. The corresponding key names include `ArrowLeft`,
 `ArrowRight`, `Enter`, `Tab`, `Space`, and `Escape`.
 
 Buttons may set `repeat` from 1 to 3 to send a shortcut multiple times as
-separate keypresses. The example Dictate button currently sends `F5` once.
+separate keypresses. The example Dictate button sends `ControlLeft` twice for
+macOS Dictation.
 
 ## Device setup
 
