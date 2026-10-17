@@ -209,6 +209,21 @@ def page_nav_layout(ctx):
     return Rect(16, y, 72, 24), Rect(ctx.width - 88, y, 72, 24)
 
 
+def page_indicator_rect(ctx):
+    return Rect(ctx.width // 2 - 32, ctx.height - 30, 64, 24)
+
+
+def page_picker_layout(ctx, pages):
+    row_height = 24
+    top = 28
+    panel_height = min(ctx.height - top - 36, row_height * len(pages) + 8)
+    panel = Rect(16, top, ctx.width - 32, panel_height)
+    rows = []
+    for index, _page in enumerate(pages):
+        rows.append(Rect(panel.x + 4, panel.y + 4 + index * row_height, panel.w - 8, row_height - 2))
+    return panel, rows
+
+
 def draw_icon(fb, button, rect):
     icon_value = button.get("icon", "")
     icon = ICON_ALIASES.get(icon_value, icon_value)
@@ -228,7 +243,7 @@ def draw_icon(fb, button, rect):
                 fb.fill_rect(x0 + column * scale, y0 + row_index * scale, scale, scale, ICON)
 
 
-def draw(ctx, title, version, page, page_index, page_count, active, message):
+def draw(ctx, title, version, page, page_index, page_count, active, message, pages=None, picker=False):
     fb = ctx.fb
     fb.clear(BG)
     header_margin = 16
@@ -257,6 +272,18 @@ def draw(ctx, title, version, page, page_index, page_count, active, message):
         fb.text_center(ctx.width // 2, ctx.height - 22, page_text, SUBTLE, 1)
     if message:
         fb.text_center(ctx.width // 2, ctx.height - 12, message[:28], SUBTLE, 1)
+    if picker and pages:
+        panel, rows = page_picker_layout(ctx, pages)
+        fb.fill_rect(panel.x, panel.y, panel.w, panel.h, BG)
+        fb.draw_line(panel.x, panel.y, panel.x + panel.w - 1, panel.y, BORDER)
+        fb.draw_line(panel.x, panel.y, panel.x, panel.y + panel.h - 1, BORDER)
+        fb.draw_line(panel.x + panel.w - 1, panel.y, panel.x + panel.w - 1, panel.y + panel.h - 1, BORDER)
+        fb.draw_line(panel.x, panel.y + panel.h - 1, panel.x + panel.w - 1, panel.y + panel.h - 1, BORDER)
+        for index, (page_item, row) in enumerate(zip(pages, rows)):
+            row_bg = BUTTON_ACTIVE if index == page_index else BUTTON
+            fb.fill_rect(row.x, row.y, row.w, row.h, row_bg)
+            label = page_item["name"] or "Page %d" % (index + 1)
+            fb.draw_text(row.x + 8, row.y + 6, label[:24], WHITE, 1)
     fb.flush()
 
 
@@ -279,6 +306,7 @@ def main(ctx):
         version = json.load(stream).get("version", "?")
     active = None
     page_index = 0
+    page_picker = False
     message = "READY"
     client = None
     bundled_env = load_dotenv()
@@ -289,7 +317,7 @@ def main(ctx):
 
     if api_key:
         message = "CONNECTING"
-        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message)
+        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
         try:
             client = MCPClient(mcp_url, api_key)
             client.initialize()
@@ -299,19 +327,33 @@ def main(ctx):
             print("Macro Pad MCP initialization failed:", exc)
     else:
         message = "SET MCP KEY"
-    draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message)
+    draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
 
     def change_page(direction):
-        nonlocal page_index, message
+        nonlocal page_index, message, page_picker
         if direction > 0:
             page_index = (page_index + 1) % len(pages)
         else:
             page_index = (page_index - 1) % len(pages)
         message = ""
-        draw(ctx, title, version, pages[page_index], page_index, len(pages), None, message)
+        page_picker = False
+        draw(ctx, title, version, pages[page_index], page_index, len(pages), None, message, pages, page_picker)
 
     def on_tap(x, y):
-        nonlocal active, message
+        nonlocal active, message, page_index, page_picker
+        if len(pages) > 1 and page_picker:
+            panel, rows = page_picker_layout(ctx, pages)
+            selected = next((i for i, rect in enumerate(rows) if rect.contains(x, y)), None)
+            if selected is not None:
+                page_index = selected
+            page_picker = False
+            message = ""
+            draw(ctx, title, version, pages[page_index], page_index, len(pages), None, message, pages, page_picker)
+            return
+        if len(pages) > 1 and page_indicator_rect(ctx).contains(x, y):
+            page_picker = True
+            draw(ctx, title, version, pages[page_index], page_index, len(pages), None, "", pages, page_picker)
+            return
         if len(pages) > 1:
             previous, next_page = page_nav_layout(ctx)
             if previous.contains(x, y):
@@ -325,7 +367,7 @@ def main(ctx):
         if index is None:
             return
         active = index
-        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, "SENDING")
+        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, "SENDING", pages, page_picker)
         if client is None:
             message = "NO MCP CONNECTION"
         else:
@@ -342,7 +384,7 @@ def main(ctx):
                 print("Macro Pad press_keys failed:", exc)
         time.sleep(0.15)
         active = None
-        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message)
+        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
 
     def on_swipe(kind, _x, _y):
         nonlocal page_index, message

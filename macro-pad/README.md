@@ -23,8 +23,9 @@ Tap the `<` and `>` controls at the bottom of the screen to move between
 pages. These are the reliable navigation method. Swipe up/down is also
 supported when the NanoKVM host reports those gestures, while horizontal
 swipes remain unused because they are reserved for the app-exit gesture. Page
-numbers are shown in the header and wrap around at either end. The original
-top-level `buttons` format remains supported for one-page configurations.
+numbers are shown between the navigation controls. Tap the page number to
+open a named page list and jump directly to a page. The original top-level
+`buttons` format remains supported for one-page configurations.
 
 After reinstalling, re-enter `NANOKVM_MCP_KEY` under the App's environment
 settings. `ERR MCP KEY` means the key is missing, expired, or does not match
