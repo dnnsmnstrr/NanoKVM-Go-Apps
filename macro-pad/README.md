@@ -94,10 +94,12 @@ rendered directly as text. The prototype maps common emoji to pixel icons and
 also accepts custom `icon_rows` made from `0`/`1`, `.`/`#`, or spaces. A later
 version could add a bitmap font or image assets for arbitrary icons.
 
-Built-in aliases include `←`, `→`, `↵`, `⇥`, `⏸`, `✅`, `✓`, `❌`, and `✕` for
-arrow, Enter, Tab, pause, checkmark, and cross icons. `🎙` and `🎤` render as
-microphone icons. The corresponding key names include `ArrowLeft`,
-`ArrowRight`, `Enter`, `Tab`, `Space`, and `Escape`.
+Built-in aliases include `←`, `→`, `↑`, `↓`, `↵`, `⇥`, `⏸`, `✅`, `✓`, `❌`,
+and `✕` for directional arrows, Enter, Tab, pause, checkmark, and cross
+icons. `ArrowLeft`, `ArrowRight`, `ArrowUp`, and `ArrowDown` can also be used
+as icon values. `🎙` and `🎤` render as microphone icons. The corresponding key
+names include `ArrowLeft`, `ArrowRight`, `ArrowUp`, `ArrowDown`, `Enter`,
+`Tab`, `Space`, and `Escape`.
 
 Buttons may set `repeat` from 1 to 3 to send a shortcut multiple times as
 separate keypresses. The example Dictate button sends `ControlLeft` twice for
