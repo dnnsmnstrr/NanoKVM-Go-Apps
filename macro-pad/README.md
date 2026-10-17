@@ -100,10 +100,7 @@ microphone icons. The corresponding key names include `ArrowLeft`,
 `ArrowRight`, `Enter`, `Tab`, `Space`, and `Escape`.
 
 Buttons may set `repeat` from 1 to 3 to send a shortcut multiple times as
-separate keypresses. The example Dictate button sends `ControlLeft` twice,
-which is the common macOS dictation shortcut. If Dictation is configured to
-use Fn twice on the target Mac, change that button's key to the NanoKVM key
-name supported by the device for Fn.
+separate keypresses. The example Dictate button currently sends `F5` once.
 
 ## Device setup
 
