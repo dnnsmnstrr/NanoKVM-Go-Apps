@@ -1,0 +1,35 @@
+{
+  "app_id": "com.example.home_assistant",
+  "name": "Home Assistant",
+  "creator": "NanoKVM Community",
+  "create_time": "2026-10-17",
+  "version": "0.1.0",
+  "desc": "Touch tiles for Home Assistant: toggle lights and switches, run scenes and scripts, and read sensors.",
+  "category": "utility",
+  "env": {
+    "HA_TOKEN": {
+      "label": "Access token",
+      "description": "Long-lived access token from your Home Assistant profile, under Security.",
+      "required": false,
+      "secret": true
+    },
+    "HA_URL": {
+      "label": "Home Assistant URL",
+      "description": "Address of your Home Assistant. .local names work.",
+      "required": false,
+      "default": "http://homeassistant.local:8123"
+    },
+    "HA_ENTITIES": {
+      "label": "Entities",
+      "description": "Optional. Pages of entities, for example: Living: light.sofa=Sofa, switch.tv; Climate: sensor.temperature. JSON such as {\"Living\": {\"Sofa\": \"light.sofa\"}} also works. Leave empty to show lights, switches, scenes and more automatically.",
+      "required": false,
+      "default": ""
+    },
+    "HA_REFRESH": {
+      "label": "Refresh interval (seconds)",
+      "description": "How often the visible tiles are updated.",
+      "required": false,
+      "default": "5"
+    }
+  }
+}

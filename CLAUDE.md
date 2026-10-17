@@ -66,8 +66,8 @@ python3 -m json.tool <app>/app.json >/dev/null
 python3 -m py_compile <app>/main.py
 ```
 
-Unit tests live in `voice-bridge/`, `macro-pad/`, `homelab-status/` and
-`device-dashboard/`.
+Unit tests live in `voice-bridge/`, `macro-pad/`, `homelab-status/`,
+`device-dashboard/` and `home-assistant/`.
 They stub `appbase` (and, for `voice-bridge`, `aiortc`, `av` and `websockets`)
 in `sys.modules`, so they run off-device:
 
@@ -77,6 +77,7 @@ python3 -m unittest discover -s voice-bridge -p 'test_*.py' -k test_latest_app_m
 python3 -m unittest discover -s macro-pad -p 'test_*.py'
 python3 -m unittest discover -s homelab-status -p 'test_*.py'
 python3 -m unittest discover -s device-dashboard -p 'test_*.py'
+python3 -m unittest discover -s home-assistant -p 'test_*.py'
 ```
 
 User configuration goes through `env` so nobody has to rebuild a ZIP:
