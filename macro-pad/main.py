@@ -68,6 +68,13 @@ def validate_buttons(buttons):
         if "text" in button:
             if not isinstance(button["text"], str) or not button["text"]:
                 raise ValueError("text buttons need non-empty text")
+        elif "sequence" in button:
+            sequence = button["sequence"]
+            if not isinstance(sequence, list) or not sequence:
+                raise ValueError("sequence buttons need a non-empty sequence")
+            for keys in sequence:
+                if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and k for k in keys):
+                    raise ValueError("each sequence step needs a non-empty keys array")
         else:
             keys = button.get("keys")
             if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and k for k in keys):
@@ -389,6 +396,12 @@ def main(ctx):
                 button = buttons[index]
                 if "text" in button:
                     client.type_text(button["text"])
+                elif "sequence" in button:
+                    for step_index, step in enumerate(button["sequence"]):
+                        if step_index:
+                            time.sleep(0.08)
+                        keys = [modifier if key == "@MOD" else key for key in step]
+                        client.press_keys(keys)
                 else:
                     keys = [modifier if key == "@MOD" else key for key in button["keys"]]
                     for repeat_index in range(button.get("repeat", 1)):

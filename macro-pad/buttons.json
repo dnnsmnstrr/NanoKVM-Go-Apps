@@ -26,7 +26,7 @@
         {"label": "Accept", "icon": "✅", "keys": ["Enter"]},
         {"label": "Deny", "icon": "❌", "keys": ["Escape"]},
         {"label": "Dictate", "icon": "🎙", "keys": ["ControlLeft"], "repeat": 2},
-        {"label": "Tab", "icon": "⇥", "keys": ["Tab"]}
+        {"label": "Clear", "icon": "❌", "sequence": [["@MOD", "KeyA"], ["Backspace"]]}
       ]
     }
   ]

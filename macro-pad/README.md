@@ -38,6 +38,8 @@ Each button contains:
   character; single ASCII characters are rendered directly at icon size;
 - `keys`: browser-style key names sent together as one shortcut; `@MOD` is
   replaced by the configured modifier;
+- `sequence`: optional ordered list of key arrays, useful for actions such as
+  select-all followed by Backspace;
 - `text`: optional text to type instead of sending a shortcut.
 
 Example:
@@ -104,6 +106,10 @@ names include `ArrowLeft`, `ArrowRight`, `ArrowUp`, `ArrowDown`, `Enter`,
 Buttons may set `repeat` from 1 to 3 to send a shortcut multiple times as
 separate keypresses. The example Dictate button sends `ControlLeft` twice for
 macOS Dictation.
+
+The example Clear button sends `@MOD+KeyA` followed by `Backspace`, clearing
+the focused input field. On macOS, `@MOD` is `MetaLeft` (Command); on
+Windows/Linux, set the top-level modifier to `ControlLeft`.
 
 ## Device setup
 
