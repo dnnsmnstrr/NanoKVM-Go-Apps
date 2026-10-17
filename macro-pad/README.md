@@ -33,7 +33,8 @@ the key currently shown under **Settings > AI > MCP Service**.
 Each button contains:
 
 - `label`: short ASCII label drawn below the icon;
-- `icon`: a built-in icon name or supported emoji alias;
+- `icon`: a built-in icon name, supported emoji alias, or single ASCII
+  character; single ASCII characters are rendered directly at icon size;
 - `keys`: browser-style key names sent together as one shortcut; `@MOD` is
   replaced by the configured modifier;
 - `text`: optional text to type instead of sending a shortcut.
@@ -91,6 +92,10 @@ The framebuffer's built-in font is ASCII-only, so arbitrary emoji cannot be
 rendered directly as text. The prototype maps common emoji to pixel icons and
 also accepts custom `icon_rows` made from `0`/`1`, `.`/`#`, or spaces. A later
 version could add a bitmap font or image assets for arbitrary icons.
+
+Built-in aliases include `←`, `→`, `↵`, `⇥`, `⏸`, `✅`, `✓`, `❌`, and `✕` for
+arrow, Enter, Tab, pause, checkmark, and cross icons. The corresponding key
+names include `ArrowLeft`, `ArrowRight`, `Enter`, `Tab`, `Space`, and `Escape`.
 
 ## Device setup
 

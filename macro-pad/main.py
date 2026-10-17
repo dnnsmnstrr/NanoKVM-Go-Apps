@@ -26,6 +26,8 @@ ICON_ALIASES = {
     "🖥": "screen", "📋": "clipboard", "📎": "clip", "💾": "save",
     "🚀": "rocket", "🎵": "music", "💡": "bulb", "▶": "play",
     "⚙": "gear", "🌐": "globe", "🔒": "lock", "💬": "chat",
+    "←": "arrow_left", "→": "arrow_right", "↵": "enter", "⇥": "tab",
+    "⏸": "pause", "✅": "check", "✓": "check", "❌": "cross", "✕": "cross",
 }
 ICONS = {
     "screen": ("01111110", "01000010", "01000010", "01111110", "00011000", "00011000", "00111100", "00000000"),
@@ -40,6 +42,13 @@ ICONS = {
     "globe": ("00111100", "01000010", "10011001", "10111101", "10111101", "10011001", "01000010", "00111100"),
     "lock": ("00111100", "01000010", "01000010", "01111110", "01000010", "01000010", "01111110", "00000000"),
     "chat": ("00111100", "01000010", "01011010", "01011010", "01000010", "01000010", "00111100", "00000000"),
+    "arrow_left": ("00011000", "00110000", "01111110", "11111111", "01111110", "00110000", "00011000", "00000000"),
+    "arrow_right": ("00011000", "00001100", "01111110", "11111111", "01111110", "00001100", "00011000", "00000000"),
+    "enter": ("00000000", "00000010", "00000010", "00111110", "01000010", "01000010", "00111100", "00000000"),
+    "tab": ("00000000", "01111110", "01011010", "01011010", "01011010", "01011010", "01111110", "00000000"),
+    "pause": ("01100110", "01100110", "01100110", "01100110", "01100110", "01100110", "01100110", "00000000"),
+    "check": ("00000000", "00000001", "00000011", "10000110", "11001100", "01111000", "00110000", "00000000"),
+    "cross": ("11000011", "11100111", "01111110", "00111100", "00111100", "01111110", "11100111", "11000011"),
 }
 
 
@@ -183,14 +192,18 @@ def page_nav_layout(ctx):
 
 
 def draw_icon(fb, button, rect):
-    icon = ICON_ALIASES.get(button.get("icon", ""), button.get("icon", ""))
+    icon_value = button.get("icon", "")
+    icon = ICON_ALIASES.get(icon_value, icon_value)
+    if len(icon_value) == 1 and icon_value.isascii() and icon_value.isprintable():
+        fb.text_center(rect.cx, rect.y + 12, icon_value, ICON, 3)
+        return
     rows = button.get("icon_rows") or ICONS.get(icon)
     if not rows:
         return
-    scale = 2
+    scale = 3
     width = max(len(row) for row in rows)
     x0 = rect.cx - width * scale // 2
-    y0 = rect.y + 20
+    y0 = rect.y + 10
     for row_index, row in enumerate(rows):
         for column, value in enumerate(row):
             if value in ("1", "#", "X"):
@@ -218,8 +231,7 @@ def draw(ctx, title, version, page, page_index, page_count, active, message):
         fb.draw_line(rect.x, rect.y + rect.h - 1, rect.x + rect.w - 1, rect.y + rect.h - 1, BORDER)
         draw_icon(fb, button, rect)
         label = button["label"]
-        scale = 2 if fb.text_width(label, 2) <= rect.w - 10 else 1
-        fb.text_center(rect.cx, rect.y + rect.h - 24, label, WHITE, scale)
+        fb.text_center(rect.cx, rect.y + rect.h - 14, label, WHITE, 1)
     if page_count > 1:
         previous, next_page = page_nav_layout(ctx)
         for rect, label in ((previous, "<"), (next_page, ">")):

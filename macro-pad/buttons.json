@@ -15,9 +15,18 @@
       "name": "Media",
       "buttons": [
         {"label": "Space", "icon": "▶", "keys": ["Space"]},
-        {"label": "Enter", "icon": "↵", "keys": ["Enter"]}
-        {"label": "Left", "icon": "ArrowLeft", "keys": ["ArrowLeft"]},
-        {"label": "Right", "icon": "ArrowRight", "keys": ["ArrowRight"]},
+        {"label": "Enter", "icon": "↵", "keys": ["Enter"]},
+        {"label": "Left", "icon": "←", "keys": ["ArrowLeft"]},
+        {"label": "Right", "icon": "→", "keys": ["ArrowRight"]}
+      ]
+    },
+    {
+      "name": "AI Tasks",
+      "buttons": [
+        {"label": "Accept", "icon": "✅", "keys": ["Enter"]},
+        {"label": "Deny", "icon": "❌", "keys": ["Escape"]},
+        {"label": "Pause", "icon": "⏸", "keys": ["Space"]},
+        {"label": "Tab", "icon": "⇥", "keys": ["Tab"]}
       ]
     }
   ]
