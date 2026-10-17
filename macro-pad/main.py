@@ -28,6 +28,7 @@ ICON_ALIASES = {
     "⚙": "gear", "🌐": "globe", "🔒": "lock", "💬": "chat",
     "←": "arrow_left", "→": "arrow_right", "↵": "enter", "⇥": "tab",
     "⏸": "pause", "✅": "check", "✓": "check", "❌": "cross", "✕": "cross",
+    "🎙": "mic", "🎤": "mic",
 }
 ICONS = {
     "screen": ("01111110", "01000010", "01000010", "01111110", "00011000", "00011000", "00111100", "00000000"),
@@ -49,6 +50,7 @@ ICONS = {
     "pause": ("01100110", "01100110", "01100110", "01100110", "01100110", "01100110", "01100110", "00000000"),
     "check": ("00000000", "00000001", "00000011", "10000110", "11001100", "01111000", "00110000", "00000000"),
     "cross": ("11000011", "11100111", "01111110", "00111100", "00111100", "01111110", "11100111", "11000011"),
+    "mic": ("00011000", "00111100", "00111100", "00111100", "00011000", "01111110", "00011000", "00000000"),
 }
 
 
@@ -65,6 +67,9 @@ def validate_buttons(buttons):
             keys = button.get("keys")
             if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and k for k in keys):
                 raise ValueError("each key button needs a non-empty keys array")
+            repeat = button.get("repeat", 1)
+            if not isinstance(repeat, int) or repeat < 1 or repeat > 3:
+                raise ValueError("button repeat must be an integer from 1 to 3")
 
 
 def load_buttons():
@@ -381,7 +386,10 @@ def main(ctx):
                     client.type_text(button["text"])
                 else:
                     keys = [modifier if key == "@MOD" else key for key in button["keys"]]
-                    client.press_keys(keys)
+                    for repeat_index in range(button.get("repeat", 1)):
+                        if repeat_index:
+                            time.sleep(0.08)
+                        client.press_keys(keys)
                 message = "SENT: " + button["label"]
             except Exception as exc:
                 message = error_status(exc)

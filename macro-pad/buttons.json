@@ -25,7 +25,7 @@
       "buttons": [
         {"label": "Accept", "icon": "✅", "keys": ["Enter"]},
         {"label": "Deny", "icon": "❌", "keys": ["Escape"]},
-        {"label": "Pause", "icon": "⏸", "keys": ["Space"]},
+        {"label": "Dictate", "icon": "🎙", "keys": ["ControlLeft"], "repeat": 2},
         {"label": "Tab", "icon": "⇥", "keys": ["Tab"]}
       ]
     }

@@ -95,8 +95,15 @@ also accepts custom `icon_rows` made from `0`/`1`, `.`/`#`, or spaces. A later
 version could add a bitmap font or image assets for arbitrary icons.
 
 Built-in aliases include `←`, `→`, `↵`, `⇥`, `⏸`, `✅`, `✓`, `❌`, and `✕` for
-arrow, Enter, Tab, pause, checkmark, and cross icons. The corresponding key
-names include `ArrowLeft`, `ArrowRight`, `Enter`, `Tab`, `Space`, and `Escape`.
+arrow, Enter, Tab, pause, checkmark, and cross icons. `🎙` and `🎤` render as
+microphone icons. The corresponding key names include `ArrowLeft`,
+`ArrowRight`, `Enter`, `Tab`, `Space`, and `Escape`.
+
+Buttons may set `repeat` from 1 to 3 to send a shortcut multiple times as
+separate keypresses. The example Dictate button sends `ControlLeft` twice,
+which is the common macOS dictation shortcut. If Dictation is configured to
+use Fn twice on the target Mac, change that button's key to the NanoKVM key
+name supported by the device for Fn.
 
 ## Device setup
 
