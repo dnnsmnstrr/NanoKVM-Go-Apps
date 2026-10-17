@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pack 1-bit PBM frames into the Bad Apple ``frames.bin`` asset.
+"""Pack 1-bit PBM frames into a BAP2 video asset (used by the Bad Apple meme).
 
 The container is ``BAP2``: a fixed header, a chunk table, and LZMA2 chunks that
 hold a group of raw 1-bit frames. Chunking keeps the asset small (the compressor
@@ -12,7 +12,7 @@ ffmpeg:
 
     ffmpeg -i bad-apple.mp4 -vf "fps=30,scale=240:180,format=monob" \
         frames/%06d.pbm
-    tools/pack_frames.py --output assets/frames.bin --fps 30 frames/*.pbm
+    tools/pack_frames.py --output assets/bad-apple.bin --fps 30 frames/*.pbm
 """
 
 from __future__ import annotations

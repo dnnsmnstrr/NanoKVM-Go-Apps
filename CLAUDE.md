@@ -44,10 +44,16 @@ Runtime pattern shared by every `main.py`:
   `draw_text`, `text_center`, `draw_sprite`, and so on).
 - `ctx.env` is the Mapping of the App's configured `env` values.
 - The built-in font is 8x8 and **ASCII-only**. Non-ASCII text (Chinese, emoji)
-  must be pre-rendered bitmaps (see `hello-world/main.py`'s hex rows, and the
-  emoji-to-pixel-icon map in `macro-pad/main.py`).
-- After 90°/270° rotation the panel hides 14 px along one edge. See
-  `visible_vertical_bounds()` in `hello-world/main.py`.
+  must be pre-rendered bitmaps (see the emoji-to-pixel-icon map in
+  `macro-pad/main.py`). `memes/engine.py` adds a few punctuation glyphs
+  (`! ' ? , + * < > &`) through its own `draw_text`.
+- After 90°/270° rotation the panel hides 14 px along one edge. Lay out
+  against `visible_rect()` (copied into each App, for example
+  `homelab-status/main.py`), not `ctx.height`.
+- Drawing is pure Python: `fill_rect` along the physically contiguous axis
+  (columns at the usual 90°/270° rotation) is cheap, a horizontal line costs
+  one write per column, and text is drawn pixel by pixel. Redraw only when
+  something changed, and measure on the device.
 - Horizontal swipes are reserved for the host's exit gesture. Use taps or
   up/down swipes for App navigation.
 
@@ -67,7 +73,7 @@ python3 -m py_compile <app>/main.py
 ```
 
 Unit tests live in `voice-bridge/`, `macro-pad/`, `homelab-status/`,
-`device-dashboard/` and `home-assistant/`.
+`device-dashboard/`, `home-assistant/` and `memes/`.
 They stub `appbase` (and, for `voice-bridge`, `aiortc`, `av` and `websockets`)
 in `sys.modules`, so they run off-device:
 
@@ -78,6 +84,7 @@ python3 -m unittest discover -s macro-pad -p 'test_*.py'
 python3 -m unittest discover -s homelab-status -p 'test_*.py'
 python3 -m unittest discover -s device-dashboard -p 'test_*.py'
 python3 -m unittest discover -s home-assistant -p 'test_*.py'
+python3 -m unittest discover -s memes -p 'test_*.py'
 ```
 
 User configuration goes through `env` so nobody has to rebuild a ZIP:
@@ -102,8 +109,9 @@ API (`/api/apps`, `/api/apps/inspect`, `/api/apps/install/stream`), and SSH
   inspects, deletes, and installs it through the web API. It uses an
   authenticated session cookie (default `/tmp/nanokvm-cookie2`; override with
   `NANOKVM_COOKIE_FILE` / `NANOKVM_URL`).
-- `bad-apple` must be uploaded with `assets/frames.bin` (regenerate it with
-  `bad-apple/tools/pack_frames.py`).
+- `memes` must be uploaded with `assets/bad-apple.bin` (regenerate it with
+  `memes/tools/pack_frames.py`). New memes are files in `memes/clips/` or
+  GIFs converted with `memes/tools/gif_to_meme.py` into `memes/assets/`.
 - `_utils/record-nanokvm-fb0.sh` records the device framebuffer to MP4 over SSH
   with ffmpeg. Its default host is outdated; set `NANOKVM_HOST`.
 

@@ -1,0 +1,35 @@
+{
+  "app_id": "com.example.memes",
+  "name": "Memes",
+  "creator": "NanoKVM Community",
+  "create_time": "2026-10-17",
+  "version": "0.1.0",
+  "desc": "Animated memes: Bad Apple, Nyan Cat, Peanut Butter Jelly Time and more. Tap for the next one.",
+  "category": "fun",
+  "env": {
+    "MEMES": {
+      "label": "Memes to play",
+      "description": "Optional. Meme ids in play order, for example: nyan-cat, pbj-time, dvd-bounce. Prefix an id with - to leave it out (-bad-apple). Empty plays all.",
+      "required": false,
+      "default": ""
+    },
+    "MEME_AUTOPLAY": {
+      "label": "Autoplay (seconds)",
+      "description": "Move to the next meme after this many seconds. 0 stays on one meme until you tap.",
+      "required": false,
+      "default": "0"
+    },
+    "MEME_SHUFFLE": {
+      "label": "Shuffle",
+      "description": "on to play the memes in random order.",
+      "required": false,
+      "default": "off"
+    },
+    "MEME_TITLES": {
+      "label": "Show titles",
+      "description": "on shows each meme's name for two seconds when it starts.",
+      "required": false,
+      "default": "on"
+    }
+  }
+}

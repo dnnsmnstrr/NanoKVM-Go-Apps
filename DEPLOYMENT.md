@@ -56,15 +56,15 @@ scp -i KEY -o IdentitiesOnly=yes \
   /tmp/nanokvm-appbase.py /tmp/nanokvm-appbase.pyi \
   root@192.168.178.83:/kvmcomm/apps/
 
-scp -i KEY -o IdentitiesOnly=yes -r hello-world \
+scp -i KEY -o IdentitiesOnly=yes -r device-dashboard \
   root@192.168.178.83:/kvmcomm/apps/
 ```
 
-For Bad Apple, upload the complete directory so `assets/frames.bin` is
-preserved:
+For Memes, upload the complete directory so `clips/` and `assets/` (including
+the 1.6 MiB `assets/bad-apple.bin`) are preserved:
 
 ```sh
-scp -i KEY -o IdentitiesOnly=yes -r bad-apple \
+scp -i KEY -o IdentitiesOnly=yes -r memes \
   root@192.168.178.83:/kvmcomm/apps/
 ```
 
@@ -72,8 +72,8 @@ Then verify the device-side files:
 
 ```sh
 ssh -i KEY -o IdentitiesOnly=yes root@192.168.178.83 \
-  'find /kvmcomm/apps/hello-world -maxdepth 2 -type f -print; \
-   find /kvmcomm/apps/bad-apple -maxdepth 2 -type f -print'
+  'find /kvmcomm/apps/device-dashboard -maxdepth 2 -type f -print; \
+   find /kvmcomm/apps/memes -maxdepth 2 -type f -print'
 ```
 
 The NanoKVM Go host rescans direct child App directories automatically. Allow
@@ -119,11 +119,11 @@ and `NANOKVM_URL` when needed.
 ## Web UI deployment
 
 The device web UI has an authenticated **Settings > Apps > Installed > Upload**
-flow. The upload is a ZIP with exactly one top-level App directory. For the
-sample App:
+flow. The upload is a ZIP with exactly one top-level App directory, for
+example:
 
 ```sh
-zip -r /tmp/hello-world.zip hello-world
+zip -r /tmp/device-dashboard.zip device-dashboard -x '*/__pycache__/*'
 ```
 
 Log in at [https://192.168.178.83](https://192.168.178.83) using the initial
@@ -143,14 +143,12 @@ must already be installed on the device for these Apps.
 ## Local validation before upload
 
 ```sh
-python3 -m json.tool hello-world/app.json >/dev/null
-python3 -m py_compile hello-world/main.py
-python3 -m json.tool bad-apple/app.json >/dev/null
-python3 -m py_compile bad-apple/main.py
+python3 -m json.tool memes/app.json >/dev/null
+python3 -m py_compile memes/*.py memes/clips/*.py
 ```
 
-`bad-apple/assets/frames.bin` is required at runtime; do not upload only
-`bad-apple/main.py`.
+`memes/assets/bad-apple.bin` is required for the Bad Apple meme; upload the
+whole `memes` directory, not only `memes/main.py`.
 
 ## Macro Pad configuration
 
@@ -172,7 +170,7 @@ files and ZIP archives.
 ssh -i KEY -o IdentitiesOnly=yes root@192.168.178.83 \
   'cat /kvmcomm/apps/appbase.py | head -20; \
    find /kvmcomm/apps -maxdepth 2 -name app.json -print | sort; \
-   ls -lh /kvmcomm/apps/bad-apple/assets/frames.bin'
+   ls -lh /kvmcomm/apps/memes/assets/bad-apple.bin'
 ```
 
 Launch Apps from the NanoKVM Apps page rather than manually running

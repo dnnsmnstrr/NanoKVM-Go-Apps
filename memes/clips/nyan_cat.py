@@ -1,10 +1,8 @@
-#!/usr/bin/env python3
 """Nyan Cat. Authentic 12-frame sprite (rainbow + pop-tart cat + stars) adapted
-from the public terminal `nyancat` (klange/nyancat) pixel frames. Pure
-animation; exit with the host's left-edge gesture.
+from the public terminal `nyancat` (klange/nyancat) pixel frames.
 """
 
-from appbase import app, rgb565
+from engine import SpriteClip, rgb as rgb565
 
 BG = rgb565(0, 51, 102)
 # ',' (background) is omitted -> transparent; we clear to BG each frame.
@@ -820,23 +818,4 @@ FRAMES = [
 ]
 
 
-@app()
-def main(ctx):
-    fb = ctx.fb
-    fh = len(FRAMES[0])
-    fw = len(FRAMES[0][0])
-    scale = max(1, min(fb.width // fw, fb.height // fh))
-    ox = (fb.width - fw * scale) // 2
-    oy = (fb.height - fh * scale) // 2
-    frame = {"i": 0}
-
-    def tick(dt):
-        fb.clear(BG)
-        fb.draw_sprite(ox, oy, FRAMES[frame["i"] % len(FRAMES)], PAL, scale)
-        frame["i"] += 1
-
-    ctx.run(tick, fps=11)
-
-
-if __name__ == "__main__":
-    main()
+CLIP = SpriteClip("nyan-cat", "Nyan Cat", FRAMES, PAL, fps=11, bg=BG, order=20)
