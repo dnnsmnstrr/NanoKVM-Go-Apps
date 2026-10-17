@@ -1,0 +1,23 @@
+{
+  "app_id": "com.example.macro_pad",
+  "name": "Macro Pad",
+  "creator": "NanoKVM Community",
+  "create_time": "2026-10-17",
+  "version": "0.1.7",
+  "desc": "Multi-page four-button touchscreen macro pad for NanoKVM.",
+  "category": "utility",
+  "env": {
+    "NANOKVM_MCP_KEY": {
+      "label": "NanoKVM MCP API key",
+      "description": "API key from Settings > AI > MCP Service.",
+      "required": false,
+      "secret": true
+    },
+    "NANOKVM_MCP_URL": {
+      "label": "NanoKVM MCP endpoint",
+      "description": "Leave unchanged for the local device MCP service.",
+      "required": true,
+      "default": "https://127.0.0.1/api/mcp"
+    }
+  }
+}
