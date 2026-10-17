@@ -7,9 +7,10 @@ fixes every App at once:
   that is physically 284x240. The NanoKVM Go's framebuffer is 240x284, and a
   calibration photo (2026-10-18) showed all of its 284x240 landscape canvas,
   so no strip is removed there.
-- CORNER_RADIUS: the radius of the display's rounded corners, measured at
-  about 21 px. Rows close to the top or bottom edge must stay away from the
-  sides by `corner_inset()`.
+- CORNER_RADIUS: the radius of the display's rounded corners. Fitting circles
+  to the corner curves in the calibration photo gave 46 px (insets of
+  26/17/8/3 px at 5/10/20/30 px from the edge). Rows close to the top or
+  bottom edge must stay away from the sides by `corner_inset()`.
 
 `Layout` splits the visible area into header, content and footer, and
 `safe_span()` gives the x range that is fully visible for a band of rows.
@@ -25,7 +26,7 @@ HIDDEN_PX = 14
 # Which logical edge the hidden strip is on, per framebuffer rotation, for
 # panels that are physically 284x240 (the SDK README's geometry).
 HIDDEN_EDGE = {0: "left", 90: "bottom", 180: "right", 270: "top"}
-CORNER_RADIUS = 22
+CORNER_RADIUS = 46
 
 
 def visible_rect(fb):
@@ -78,3 +79,8 @@ class Layout:
         """(left, right) x bounds that are fully visible for rows [top, bottom)."""
         inset = self.inset(top, bottom) + margin
         return self.view.x + inset, self.view.x + self.view.w - inset
+
+    def content_span(self, margin=4):
+        """safe_span() for the whole content area between header and footer."""
+        content = self.content
+        return self.safe_span(content.y, content.y + content.h, margin)

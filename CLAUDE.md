@@ -52,8 +52,8 @@ Runtime pattern shared by every `main.py`:
   do not match this device. Layouts must adapt to `ctx.width`/`ctx.height`.
 - A calibration photo (2026-10-18) showed the whole 284x240 canvas: the
   SDK's "14 px hidden strip" applies only to panels that are physically
-  284x240, not to this one. The panel has rounded corners of about 21 px
-  radius (`CORNER_RADIUS = 22`). Lay out against `kvmkit.screen.Layout`
+  284x240, not to this one. The panel has rounded corners of 46 px
+  radius (`CORNER_RADIUS = 46`, fitted from the photo's corner curves). Lay out against `kvmkit.screen.Layout`
   (`visible_rect()`, `safe_span()`), never the raw canvas, so text near the
   top and bottom edges stays clear of the corners. `_lib/kvmkit/screen.py`
   is the single place to correct the geometry.

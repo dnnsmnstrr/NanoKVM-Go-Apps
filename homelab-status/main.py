@@ -215,13 +215,14 @@ class Board:
 
     # -- layout --
     def row_rect(self, index):
-        return Rect(self.view.x + 2, self.content_top + index * ROW_H, self.view.w - 4, ROW_H - 3)
+        left, right = self.layout.content_span(margin=2)
+        return Rect(left, self.content_top + index * ROW_H, right - left, ROW_H - 3)
 
     def detail_buttons(self):
         y = self.view.y + self.view.h - 36
-        half = (self.view.w - 40) // 2
-        return (Rect(self.view.x + 16, y, half, 30),
-                Rect(self.view.x + 24 + half, y, half, 30))
+        left, right = self.layout.safe_span(y, y + 30)
+        half = (right - left - 8) // 2
+        return (Rect(left, y, half, 30), Rect(right - half, y, half, 30))
 
     @property
     def page_index(self):

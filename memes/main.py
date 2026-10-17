@@ -14,6 +14,7 @@ from pathlib import Path
 from appbase import DOWN as SWIPE_DOWN, UP as SWIPE_UP, app
 
 import engine
+from kvmkit.screen import Layout
 
 APP_DIR = Path(__file__).resolve().parent
 TITLE_SECONDS = 2.0
@@ -43,6 +44,7 @@ class Player:
         self.titles = titles
         self.autoplay = autoplay
         self.area = engine.visible_rect(ctx.fb)
+        self.layout = Layout(ctx.fb)
         self.position = 0
         self.clip = None
         self.show(0)
@@ -123,10 +125,13 @@ class Player:
         y = area.y + area.h - band_h
         fb.fill_rect(area.x, y, area.w, band_h, BAND)
         counter = "%d/%d" % (self.position + 1, len(self.clips))
-        room = area.w - engine.text_width(counter) - 20
+        # The band sits on the bottom edge: keep its text clear of the rounded corners.
+        left, right = self.layout.safe_span(y + 7, y + 23)
+        room = right - left - engine.text_width(counter) - 12
         scale = 2 if engine.text_width(clip.title, 2) <= room else 1
-        engine.draw_text(fb, area.x + 8, y + (7 if scale == 2 else 11), clip.title, BAND_TEXT, scale)
-        engine.draw_text(fb, area.x + area.w - engine.text_width(counter) - 8, y + 11, counter, BAND_DIM, 1)
+        title = clip.title[:max(0, room // (8 * scale))]
+        engine.draw_text(fb, left, y + (7 if scale == 2 else 11), title, BAND_TEXT, scale)
+        engine.draw_text(fb, right - engine.text_width(counter), y + 11, counter, BAND_DIM, 1)
 
 
 @app()

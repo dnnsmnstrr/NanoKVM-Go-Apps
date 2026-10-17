@@ -84,6 +84,13 @@ class ScreenTests(unittest.TestCase):
         self.assertEqual(layout.safe_span(bottom - 2, bottom, margin=0)[0], 22)
         self.assertEqual(layout.safe_span(bottom - 10, bottom - 2, margin=0)[0], 13)
 
+    def test_measured_radius_matches_the_photo(self):
+        # Insets fitted from the calibration photo at 5/10/20/30 px depth.
+        self.assertEqual([screen.corner_inset(d) for d in (5, 10, 20, 30)], [26, 18, 9, 3])
+        layout = screen.Layout(FakeFB(), header_h=30, footer_h=34)
+        left, right = layout.content_span(margin=0)
+        self.assertEqual((left, right), (3, 281))
+
 
 class PagerTests(unittest.TestCase):
     def test_paging_and_footer_taps(self):
@@ -105,7 +112,7 @@ class PagerTests(unittest.TestCase):
 
     def test_header_text_stays_inside_the_corners(self):
         fb = FakeFB()
-        layout = screen.Layout(fb, radius=22)
+        layout = screen.Layout(fb)
         Pager(layout).draw_header(fb, "A very long page title for the header", right="23:40", dot=1)
         for x, y, value, scale in fb.texts:
             left, right = layout.safe_span(y, y + 8 * scale, margin=0)

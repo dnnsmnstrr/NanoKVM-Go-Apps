@@ -216,14 +216,17 @@ class Panel:
     def tile_rects(self):
         # Six tiles either way: 3x2 on a wide (landscape) screen, 2x3 on a tall one.
         columns, rows = (3, 2) if self.view.w > self.view.h else (COLUMNS, ROWS)
-        width = (self.view.w - 8 - (columns - 1) * GAP) // columns
+        left, right = self.layout.content_span()
+        width = (right - left - (columns - 1) * GAP) // columns
         height = (self.content_bottom - self.content_top - 4 - (rows - 1) * GAP) // rows
-        return [Rect(self.view.x + 4 + (index % columns) * (width + GAP),
+        return [Rect(left + (index % columns) * (width + GAP),
                      self.content_top + 2 + (index // columns) * (height + GAP), width, height)
                 for index in range(columns * rows)]
 
     def detail_back(self):
-        return Rect(self.view.x + 16, self.view.y + self.view.h - 36, self.view.w - 32, 30)
+        y = self.view.y + self.view.h - 36
+        left, right = self.layout.safe_span(y, y + 30)
+        return Rect(left, y, right - left, 30)
 
     def page_changed(self):
         with self.lock:
@@ -379,10 +382,10 @@ class Panel:
             fb.draw_text(rect.x + rect.w - 6 - fb.text_width(secondary), rect.y + 26,
                          secondary, CONFIRM if confirming else SUBTLE, 1)
         label = entity.get("label") or (hass.friendly_name(state) if state else entity_id)
-        lines = wrap(label, rect.w - 8, 2)
+        lines = wrap(label, rect.w - 6, 2)
         y = rect.y + rect.h - 4 - 11 * len(lines)
         for line in lines:
-            fb.draw_text(rect.x + 4, y, line, SUBTLE if not active else WHITE, 1)
+            fb.draw_text(rect.x + 3, y, line, SUBTLE if not active else WHITE, 1)
             y += 11
 
     def draw_footer(self):
