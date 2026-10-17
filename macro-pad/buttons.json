@@ -8,7 +8,7 @@
         {"label": "Accept", "icon": "✅", "keys": ["Enter"]},
         {"label": "Deny", "icon": "❌", "keys": ["Escape"]},
         {"label": "Dictate", "icon": "🎙", "keys": ["ControlLeft"], "repeat": 2},
-        {"label": "Clear", "icon": "❌", "sequence": [["@MOD", "KeyA"], ["Backspace"]]}
+        {"label": "Clear", "icon": "⌫", "sequence": [["@MOD", "KeyA"], ["Backspace"]]}
       ]
     },
     {
@@ -24,8 +24,17 @@
       "name": "Media",
       "buttons": [
         {"label": "Space", "icon": "▶", "keys": ["Space"]},
-        {"label": "Enter", "icon": "↵", "keys": ["Enter"]},
+        {"label": "Switch", "icon": "↵", "keys": ["@MOD", "Tab"]},
         {"label": "Left", "icon": "←", "keys": ["ArrowLeft"]},
+        {"label": "Right", "icon": "→", "keys": ["ArrowRight"]}
+      ]
+    },
+    {
+      "name": "Navigation",
+      "buttons": [
+        {"label": "Space", "icon": "▶", "keys": ["Space"]},
+        {"label": "Switch App", "icon": "↵", "keys": ["@MOD", "Tab"]},
+        {"label": "Raycast", "icon": "🚀", "keys": ["ControlLeft", "Space"]},
         {"label": "Right", "icon": "→", "keys": ["ArrowRight"]}
       ]
     }
