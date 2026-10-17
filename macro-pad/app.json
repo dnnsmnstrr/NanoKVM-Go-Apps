@@ -3,8 +3,8 @@
   "name": "Macro Pad",
   "creator": "NanoKVM Community",
   "create_time": "2026-10-17",
-  "version": "0.1.28",
-  "desc": "Multi-page four-button touchscreen macro pad for NanoKVM.",
+  "version": "0.1.31",
+  "desc": "Multi-page touchscreen macro pad for NanoKVM with up to nine buttons per page.",
   "category": "utility",
   "env": {
     "NANOKVM_MCP_KEY": {

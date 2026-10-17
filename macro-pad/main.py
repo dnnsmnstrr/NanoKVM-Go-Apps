@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Four-button NanoKVM MCP macro pad."""
+"""Multi-page NanoKVM MCP macro pad with 2x2 and 3x3 button grids."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ BG = rgb565(10, 12, 18)
 BUTTON = rgb565(34, 40, 52)
 BUTTON_ACTIVE = rgb565(34, 104, 76)
 BORDER = rgb565(84, 96, 116)
+MAX_BUTTONS = 9
 ICON = rgb565(255, 205, 90)
 SUBTLE = rgb565(150, 160, 175)
 
@@ -59,14 +60,23 @@ ICONS = {
     "cross": ("11000011", "11100111", "01111110", "00111100", "00111100", "01111110", "11100111", "11000011"),
     "mic": ("00011000", "00111100", "00111100", "00111100", "00011000", "01111110", "00011000", "00000000"),
     "backspace": ("00011000", "00111110", "01100010", "11000010", "11010010", "11001010", "01111110", "00000000"),
-    "volume_up": ("00011000", "00111000", "01111000", "00111000", "00011000", "00000110", "00001100", "00011000"),
-    "volume_down": ("00011000", "00111000", "01111000", "00111000", "00011000", "00000110", "00000000", "00000000"),
+    # A wider speaker silhouette makes the small icons read cleanly on the
+    # display: the cone is on the left, with one or two separated sound waves
+    # on the right rather than a few ambiguous diagonal pixels.
+    "volume_up": (
+        "0000110000", "0000110000", "0011110010", "0111110101",
+        "0011110010", "0000110000", "0000110000", "0000000000",
+    ),
+    "volume_down": (
+        "0000110000", "0000110000", "0011110000", "0111110010",
+        "0011110000", "0000110000", "0000110000", "0000000000",
+    ),
 }
 
 
 def validate_buttons(buttons):
-    if not isinstance(buttons, list) or len(buttons) != 4:
-        raise ValueError("each Macro Pad page must contain exactly four buttons")
+    if not isinstance(buttons, list) or not 1 <= len(buttons) <= MAX_BUTTONS:
+        raise ValueError("each Macro Pad page must contain 1 to 9 buttons")
     for button in buttons:
         if not isinstance(button, dict) or not isinstance(button.get("label"), str):
             raise ValueError("each button needs a string label")
@@ -218,17 +228,26 @@ class MCPClient:
             raise RuntimeError(content[0].get("text", "type_text failed"))
 
 
-def button_layout(ctx):
-    margin_x, gap = 16, 12
-    top, bottom, gap_y = 28, 44, 12
-    width = (ctx.width - 2 * margin_x - gap) // 2
-    height = (ctx.height - top - bottom - gap_y) // 2
+def button_layout(ctx, count=4):
+    # Pages with up to four buttons keep the roomy 2x2 grid; larger pages use
+    # a 3x3 grid with tighter gaps.
+    columns = 2 if count <= 4 else 3
+    margin_x, top, bottom = 16, 28, 44
+    gap = 12 if columns == 2 else 8
+    width = (ctx.width - 2 * margin_x - (columns - 1) * gap) // columns
+    height = (ctx.height - top - bottom - (columns - 1) * gap) // columns
     return [
-        Rect(margin_x, top, width, height),
-        Rect(margin_x + width + gap, top, width, height),
-        Rect(margin_x, top + height + gap_y, width, height),
-        Rect(margin_x + width + gap, top + height + gap_y, width, height),
+        Rect(margin_x + (index % columns) * (width + gap),
+             top + (index // columns) * (height + gap), width, height)
+        for index in range(count)
     ]
+
+
+def fit_text(fb, text, width):
+    """Trim text so it fits within width pixels at scale 1."""
+    while text and fb.text_width(text, 1) > width:
+        text = text[:-1]
+    return text
 
 
 def page_nav_layout(ctx):
@@ -278,7 +297,7 @@ def draw(ctx, title, version, page, page_index, page_count, active, message, pag
     version_text = "v" + version
     fb.draw_text(ctx.width - fb.text_width(version_text, 1) - header_margin, 14, version_text, SUBTLE, 1)
     buttons = page["buttons"]
-    for index, (button, rect) in enumerate(zip(buttons, button_layout(ctx))):
+    for index, (button, rect) in enumerate(zip(buttons, button_layout(ctx, len(buttons)))):
         bg = BUTTON_ACTIVE if index == active else BUTTON
         fb.fill_rect(rect.x, rect.y, rect.w, rect.h, bg)
         fb.draw_line(rect.x, rect.y, rect.x + rect.w - 1, rect.y, BORDER)
@@ -286,7 +305,7 @@ def draw(ctx, title, version, page, page_index, page_count, active, message, pag
         fb.draw_line(rect.x + rect.w - 1, rect.y, rect.x + rect.w - 1, rect.y + rect.h - 1, BORDER)
         fb.draw_line(rect.x, rect.y + rect.h - 1, rect.x + rect.w - 1, rect.y + rect.h - 1, BORDER)
         draw_icon(fb, button, rect)
-        label = button["label"]
+        label = fit_text(fb, button["label"], rect.w - 4)
         fb.text_center(rect.cx, rect.y + rect.h - 14, label, WHITE, 1)
     if page_count > 1:
         previous, next_page = page_nav_layout(ctx)
@@ -394,7 +413,7 @@ def main(ctx):
                 change_page(1)
                 return
         buttons = pages[page_index]["buttons"]
-        index = next((i for i, rect in enumerate(button_layout(ctx)) if rect.contains(x, y)), None)
+        index = next((i for i, rect in enumerate(button_layout(ctx, len(buttons))) if rect.contains(x, y)), None)
         if index is None:
             return
         active = index

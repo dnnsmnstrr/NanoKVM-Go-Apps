@@ -14,28 +14,33 @@
     {
       "name": "Clipboard",
       "buttons": [
-        {"label": "Copy", "icon": "📋", "keys": ["@MOD", "KeyC"]},
         {"label": "Paste", "icon": "📎", "keys": ["@MOD", "KeyV"]},
-        {"label": "NanoKVM", "icon": "🌐", "url": "https://192.168.178.83"},
-        {"label": "Raycast", "icon": "🚀", "keys": ["ControlLeft", "Space"]}
+        {"label": "Copy", "icon": "📋", "keys": ["@MOD", "KeyC"]},
+        {"label": "Raycast", "icon": "🚀", "keys": ["ControlLeft", "Space"]},
+        {"label": "NanoKVM", "icon": "🌐", "url": "https://192.168.178.83"}
       ]
     },
     {
       "name": "Media",
       "buttons": [
         {"label": "Space", "icon": "▶", "keys": ["Space"]},
-        {"label": "Switch", "icon": "↵", "keys": ["@MOD", "Tab"]},
-        {"label": "Left", "icon": "←", "keys": ["ArrowLeft"]},
-        {"label": "Right", "icon": "→", "keys": ["ArrowRight"]}
+        {"label": "Skip", "icon": "→", "keys": ["ArrowRight"]},
+        {"label": "Volume Up", "icon": "🔊", "keys": ["VolumeUp"]},
+        {"label": "Volume Down", "icon": "🔉", "keys": ["VolumeDown"]}
       ]
     },
     {
       "name": "Navigation",
       "buttons": [
-        {"label": "Space", "icon": "▶", "keys": ["Space"]},
-        {"label": "Switch App", "icon": "↵", "keys": ["@MOD", "Tab"]},
-        {"label": "Raycast", "icon": "🚀", "keys": ["ControlLeft", "Space"]},
-        {"label": "Right", "icon": "→", "keys": ["ArrowRight"]}
+        {"label": "Tab", "icon": "⇥", "keys": ["Tab"]},
+        {"label": "Up", "icon": "↑", "keys": ["ArrowUp"]},
+        {"label": "Bksp", "icon": "⌫", "keys": ["Backspace"]},
+        {"label": "Left", "icon": "←", "keys": ["ArrowLeft"]},
+        {"label": "Enter", "icon": "↵", "keys": ["Enter"]},
+        {"label": "Right", "icon": "→", "keys": ["ArrowRight"]},
+        {"label": "Esc", "icon": "❌", "keys": ["Escape"]},
+        {"label": "Down", "icon": "↓", "keys": ["ArrowDown"]},
+        {"label": "Space", "icon": "▶", "keys": ["Space"]}
       ]
     }
   ]

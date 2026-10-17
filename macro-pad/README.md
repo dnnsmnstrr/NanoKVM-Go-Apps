@@ -1,7 +1,7 @@
 # Macro Pad
 
-`macro-pad` turns the NanoKVM Go touchscreen into a multi-page, four-button
-Stream Deck-style controller. Each button calls NanoKVM MCP's `press_keys`
+`macro-pad` turns the NanoKVM Go touchscreen into a multi-page Stream
+Deck-style controller with up to nine buttons per page. Each button calls NanoKVM MCP's `press_keys`
 tool, so the keypress is sent to the USB-connected target computer.
 
 ## Configure buttons
@@ -11,13 +11,18 @@ The configuration object contains:
 
 - `title`: the small header title shown on the screen;
 - `modifier`: `MetaLeft` for macOS Command, or `ControlLeft` for Windows/Linux;
-- `buttons`: exactly four button definitions in the original one-page format;
+- `buttons`: one to nine button definitions in the original one-page format;
   use `pages` for multiple pages.
 
 Each `pages` entry contains:
 
 - `name`: optional page name shown below the header;
-- `buttons`: exactly four button definitions.
+- `buttons`: one to nine button definitions.
+
+Pages with up to four buttons use a 2x2 grid. Pages with five to nine buttons
+use a 3x3 grid, filled left to right and top to bottom. The 3x3 cells are
+narrower, so labels longer than about seven characters are trimmed there.
+The example Arrows page shows a nine-button layout.
 
 Tap the `<` and `>` controls at the bottom of the screen to move between
 pages. These are the reliable navigation method. Swipe up/down is also
@@ -151,7 +156,7 @@ for shared or production installs.
 MCP uses browser-style key names: `ControlLeft`, `ShiftLeft`, `AltLeft`,
 `MetaLeft`, `KeyA` through `KeyZ`, `Digit1` through `Digit0`, `Enter`,
 `Escape`, `Tab`, `Space`, `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`,
-and `F1` through `F12`. The remote OS and keyboard layout determine how
+`VolumeUp`, `VolumeDown`, and `F1` through `F12`. The remote OS and keyboard layout determine how
 character keys are interpreted.
 
 The app requires the manifest-based App SDK and a device build that exposes
