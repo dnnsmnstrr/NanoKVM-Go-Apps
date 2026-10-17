@@ -1,9 +1,9 @@
 {
   "app_id": "com.example.device_dashboard",
-  "name": "Device",
+  "name": "Device Status",
   "creator": "NanoKVM Community",
   "create_time": "2026-10-17",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "desc": "NanoKVM system health, network status and QR codes for the web UI, Wi-Fi and custom links.",
   "category": "utility",
   "env": {

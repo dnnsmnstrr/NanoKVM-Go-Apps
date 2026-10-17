@@ -128,6 +128,10 @@ API (`/api/apps`, `/api/apps/inspect`, `/api/apps/install/stream`), and SSH
 `scp` to `/kvmcomm/apps/`. Key points:
 
 - Upload a ZIP that contains exactly one top-level App directory.
+- The host saves an App's settings as `value` fields inside the installed
+  `<app>/app.json`. Overwriting that file (for example with `scp`) erases them,
+  so leave `app.json` out of in-place copies unless the App has no saved
+  settings.
 - To update an App, **remove and reinstall** it. Copying over SSH in place
   (`_utils/update-app-in-place.sh`) does not reliably keep the App's
   environment. Protected values such as `NANOKVM_MCP_KEY` must be entered

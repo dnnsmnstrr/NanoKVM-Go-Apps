@@ -1,4 +1,4 @@
-# Device
+# Device Status
 
 A dashboard for the NanoKVM itself, with QR codes so a phone can connect in
 one scan.
