@@ -206,7 +206,7 @@ def button_layout(ctx):
 
 def page_nav_layout(ctx):
     y = ctx.height - 30
-    return Rect(16, y, 52, 24), Rect(ctx.width - 68, y, 52, 24)
+    return Rect(16, y, 72, 24), Rect(ctx.width - 88, y, 72, 24)
 
 
 def draw_icon(fb, button, rect):
@@ -232,11 +232,9 @@ def draw(ctx, title, version, page, page_index, page_count, active, message):
     fb = ctx.fb
     fb.clear(BG)
     header_margin = 16
-    fb.draw_text(header_margin, 4, title[:24], WHITE, 1)
+    fb.draw_text(header_margin, 14, title[:24], WHITE, 1)
     version_text = "v" + version
     fb.draw_text(ctx.width - fb.text_width(version_text, 1) - header_margin, 14, version_text, SUBTLE, 1)
-    if page["name"]:
-        fb.text_center(ctx.width // 2, 15, page["name"][:20], SUBTLE, 1)
     buttons = page["buttons"]
     for index, (button, rect) in enumerate(zip(buttons, button_layout(ctx))):
         bg = BUTTON_ACTIVE if index == active else BUTTON
