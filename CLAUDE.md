@@ -66,19 +66,25 @@ python3 -m json.tool <app>/app.json >/dev/null
 python3 -m py_compile <app>/main.py
 ```
 
-Unit tests live in `voice-bridge/`, `homelab-status/` and `device-dashboard/`.
+Unit tests live in `voice-bridge/`, `macro-pad/`, `homelab-status/` and
+`device-dashboard/`.
 They stub `appbase` (and, for `voice-bridge`, `aiortc`, `av` and `websockets`)
 in `sys.modules`, so they run off-device:
 
 ```sh
 python3 -m unittest discover -s voice-bridge -p 'test_*.py'
 python3 -m unittest discover -s voice-bridge -p 'test_*.py' -k test_latest_app_manifest
+python3 -m unittest discover -s macro-pad -p 'test_*.py'
 python3 -m unittest discover -s homelab-status -p 'test_*.py'
 python3 -m unittest discover -s device-dashboard -p 'test_*.py'
 ```
 
-`homelab-status` reads a gitignored `homelab-status/conf.yml` (Dashy format)
-when `DASHY_URL` is not set. Do not commit it.
+User configuration goes through `env` so nobody has to rebuild a ZIP:
+`macro-pad` reads `MACRO_PAD_CONFIG` (JSON or a URL to JSON) and falls back to
+`buttons.json`; `homelab-status` reads `HOMELAB_SERVICES`, then `DASHY_URL`,
+then a gitignored `homelab-status/conf.yml`. Env fields in the web UI are
+single-line inputs, so env-carried config must work as one-line JSON. Do not
+commit `homelab-status/conf.yml`.
 
 ## Deploying to the device
 

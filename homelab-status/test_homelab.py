@@ -168,6 +168,42 @@ class CheckTests(unittest.TestCase):
         self.assertEqual((state.code, state.latency, state.history), (200, 12, [(checks.UP, 12)]))
 
 
+class InlineServicesTests(unittest.TestCase):
+    def sections(self, text):
+        return dashy.extract_services(dashy.parse_inline_services(text))[1]
+
+    def test_shorthand_json(self):
+        sections = self.sections('{"Server": {"Gitea": "http://pi.local:8124"}, "NAS": [{"title": "UGOS", "url": "http://n:9999"}]}')
+        self.assertEqual([(s["name"], [i["title"] for i in s["items"]]) for s in sections],
+                         [("Server", ["Gitea"]), ("NAS", ["UGOS"])])
+        self.assertEqual(sections[0]["items"][0]["check_url"], "http://pi.local:8124")
+
+    def test_dashy_json_and_section_list(self):
+        dashy_json = '{"pageInfo": {"title": "Lab"}, "sections": [{"name": "A", "items": [{"title": "X", "url": "http://x"}]}]}'
+        self.assertEqual(dashy.extract_services(dashy.parse_inline_services(dashy_json))[0], "Lab")
+        self.assertEqual(self.sections('[{"name": "A", "items": [{"title": "X", "url": "http://x"}]}]')[0]["name"], "A")
+
+    def test_plain_text_list(self):
+        sections = self.sections("Server: Gitea=http://pi.local:8124, http://pi.local:8090/; NAS: UGOS=http://n:9999")
+        self.assertEqual([s["name"] for s in sections], ["Server", "NAS"])
+        self.assertEqual([(i["title"], i["url"]) for i in sections[0]["items"]],
+                         [("Gitea", "http://pi.local:8124"), ("pi.local:8090", "http://pi.local:8090/")])
+        unnamed = self.sections("http://a.local/, B=https://b:9443")
+        self.assertEqual(unnamed[0]["name"], "Services")
+        self.assertEqual([i["title"] for i in unnamed[0]["items"]], ["a.local", "B"])
+
+    def test_invalid_json_raises(self):
+        with self.assertRaises(dashy.YamlError):
+            dashy.parse_inline_services('{"Server": ')
+
+    def test_load_config_prefers_env(self):
+        title, sections, source = main.load_config({"HOMELAB_SERVICES": "Gitea=http://g", "DASHY_URL": "http://unused"})
+        self.assertEqual((source, sections[0]["items"][0]["title"]), ("ENV", "Gitea"))
+        with self.assertRaises(main.ConfigError) as caught:
+            main.load_config({"HOMELAB_SERVICES": "{broken"})
+        self.assertIn("HOMELAB-SERVICES", caught.exception.hint)
+
+
 class UiHelperTests(unittest.TestCase):
     def test_text_only_uses_font_glyphs(self):
         self.assertEqual(main.text("my_app?x=1+2"), "MY-APP.X:1-2")
@@ -176,6 +212,10 @@ class UiHelperTests(unittest.TestCase):
         self.assertEqual(main.config_url("pi.local:4000"), "http://pi.local:4000/conf.yml")
         self.assertEqual(main.config_url("http://pi.local:4000/"), "http://pi.local:4000/conf.yml")
         self.assertEqual(main.config_url("http://x/y/my.yml"), "http://x/y/my.yml")
+
+    def test_wrap_breaks_at_spaces(self):
+        self.assertEqual(main.wrap("check homelab_services in app env", 216, 3), ["CHECK HOMELAB-SERVICES IN", "APP ENV"])
+        self.assertEqual(main.wrap("http://raspberrypi.local:3001", 80, 3), ["HTTP://RAS", "PBERRYPI.L", "OCAL:3001"])
 
     def test_ago(self):
         self.assertEqual(main.ago(5), "5S")

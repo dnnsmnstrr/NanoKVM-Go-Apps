@@ -289,3 +289,75 @@ def extract_services(config):
         if isinstance(page, dict) and page.get("path"):
             pages.append(str(page["path"]))
     return (str(title) if title else None), sections, pages
+
+
+def parse_config_text(text):
+    """Parse a Dashy config that may be YAML or JSON (JSON is also valid YAML)."""
+    stripped = text.lstrip("﻿ \t\r\n")
+    if stripped.startswith(("{", "[")):
+        import json
+        try:
+            return json.loads(stripped)
+        except ValueError as exc:
+            raise YamlError("invalid JSON: %s" % exc) from exc
+    return parse_yaml(text)
+
+
+def _shorthand_items(value):
+    """Items from {"Title": "url"} or a list of Dashy-style item objects."""
+    if isinstance(value, dict):
+        return [{"title": title, "url": url} for title, url in value.items()]
+    if isinstance(value, list):
+        return [item if isinstance(item, dict) else {"title": item, "url": item} for item in value]
+    raise YamlError("each section needs services")
+
+
+def _parse_link_list(text):
+    """`Section: Title=url, url; Other: ...` -> Dashy sections."""
+    sections = []
+    for chunk in text.replace("\n", ";").split(";"):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        name = "Services"
+        colon = chunk.find(":")
+        head = chunk[:colon]
+        # "Server: Gitea=http://..." names a section; "http://..." does not.
+        if colon > 0 and "=" not in head and "/" not in head and chunk[colon + 1:colon + 2] != "/":
+            name, chunk = head.strip(), chunk[colon + 1:]
+        items = []
+        for entry in chunk.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            title, separator, url = entry.partition("=")
+            if separator and "/" not in title and ":" not in title:
+                items.append({"title": title.strip(), "url": url.strip()})
+            else:
+                host = entry.split("://", 1)[-1].split("/", 1)[0]
+                items.append({"title": host, "url": entry})
+        if items:
+            sections.append({"name": name, "items": items})
+    return {"sections": sections}
+
+
+def parse_inline_services(text):
+    """Turn the HOMELAB_SERVICES env value into a Dashy-shaped config.
+
+    Accepted forms:
+      - Dashy JSON: {"sections": [{"name": ..., "items": [...]}]}
+      - shorthand JSON: {"Server": {"Gitea": "http://..."}, ...}
+      - a list of sections: [{"name": ..., "items": [...]}]
+      - plain text: "Server: Gitea=http://..., Beszel=http://...; NAS: ..."
+    """
+    text = text.strip()
+    if not text.startswith(("{", "[")):
+        return _parse_link_list(text)
+    data = parse_config_text(text)
+    if isinstance(data, list):
+        return {"sections": data}
+    if not isinstance(data, dict):
+        raise YamlError("services must be a JSON object or list")
+    if "sections" in data:
+        return data
+    return {"sections": [{"name": name, "items": _shorthand_items(value)} for name, value in data.items()]}

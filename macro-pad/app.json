@@ -3,7 +3,7 @@
   "name": "Macro Pad",
   "creator": "NanoKVM Community",
   "create_time": "2026-10-17",
-  "version": "0.1.31",
+  "version": "0.1.32",
   "desc": "Multi-page touchscreen macro pad for NanoKVM with up to nine buttons per page.",
   "category": "utility",
   "env": {
@@ -18,6 +18,18 @@
       "description": "Leave unchanged for the local device MCP service.",
       "required": true,
       "default": "https://127.0.0.1/api/mcp"
+    },
+    "MACRO_PAD_CONFIG": {
+      "label": "Button configuration",
+      "description": "Optional. The buttons.json content as one-line JSON, or an http(s) link to a JSON file. Leave empty to use the bundled buttons.",
+      "required": false,
+      "default": ""
+    },
+    "MACRO_PAD_MODIFIER": {
+      "label": "@MOD key",
+      "description": "Optional. mac (Command) or windows/linux (Control). Overrides the modifier from the button configuration.",
+      "required": false,
+      "default": ""
     }
   }
 }

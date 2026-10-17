@@ -7,14 +7,41 @@ or not checked (gray).
 
 ## Setup
 
+Configure the App under **Settings > Apps > Installed > Homelab >
+Environment**. No rebuild is needed. Restart the App, or tap its header, to
+apply changes.
+
+### Without Dashy: `HOMELAB_SERVICES`
+
+List your services directly. The field is single-line, so use one of these
+compact forms:
+
+```text
+Server: Gitea=http://raspberrypi.local:8124, Beszel=http://raspberrypi.local:8090; NAS: UGOS=http://192.168.1.10:9999
+```
+
+```json
+{"Server": {"Gitea": "http://raspberrypi.local:8124", "Portainer": "https://raspberrypi.local:9443"}, "NAS": {"UGOS": "http://192.168.1.10:9999"}}
+```
+
+Sections are separated with `;` and services with `,`. A service is
+`Title=URL`, or just a URL, which is then titled by its host. The JSON form
+also accepts Dashy's own shape (`{"sections": [...]}`) or a list of sections,
+including per-item options such as `statusCheckAcceptCodes`. When
+`HOMELAB_SERVICES` is set, it takes precedence over `DASHY_URL`.
+
+### With Dashy: `DASHY_URL`
+
 Set **DASHY_URL** in the App environment to your Dashy address, for example
 `http://raspberrypi.local:4000`. The App loads `<DASHY_URL>/conf.yml` plus any
-sub-pages listed under `pages:`. You can also give a direct link to a `.yml`
-file. The last config fetched is cached, so the board still works when Dashy
-itself is down.
+sub-pages listed under `pages:`. You can also give a direct link to any
+Dashy-format `.yml` or JSON file, for example a raw Gist. The last config
+fetched is cached, so the board still works when Dashy itself is down.
 
-Without Dashy, put a `conf.yml` in Dashy's format into this directory before
-zipping the App. It is gitignored so your service list stays out of the
+### Bundled file
+
+If neither env value is set, the App reads a `conf.yml` in Dashy's format from
+its own directory, which you add before zipping the App. It is gitignored so your service list stays out of the
 repository. Only `sections[].items[]` matter:
 
 ```yaml
@@ -32,6 +59,7 @@ sections:
 
 | Env | Default | Meaning |
 | --- | --- | --- |
+| `HOMELAB_SERVICES` | empty | Inline service list (see above) |
 | `DASHY_URL` | empty | Dashy address or `conf.yml` link |
 | `CHECK_INTERVAL` | `60` | Seconds between check rounds (minimum 5) |
 | `CHECK_TIMEOUT` | `6` | Seconds before a service counts as down |

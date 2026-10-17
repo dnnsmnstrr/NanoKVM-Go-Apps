@@ -68,9 +68,17 @@ def fit(value, width, scale=1):
 
 
 def wrap(value, width, lines, scale=1):
-    value = text(value)
+    """Wrap at spaces where possible; split words (and URLs) that are too long."""
     limit = max(1, width // (8 * scale))
-    chunks = [value[index:index + limit] for index in range(0, len(value), limit)]
+    chunks = []
+    for word in text(value).split(" "):
+        if chunks and len(chunks[-1]) + 1 + len(word) <= limit:
+            chunks[-1] += " " + word
+            continue
+        while len(word) > limit:
+            chunks.append(word[:limit])
+            word = word[limit:]
+        chunks.append(word)
     if len(chunks) > lines:
         chunks = chunks[:lines]
         chunks[-1] = chunks[-1][:-2] + ".."
@@ -133,14 +141,22 @@ def fetch_text(url, timeout=8):
         return response.read(512 * 1024).decode("utf-8", "replace")
 
 
+class ConfigError(RuntimeError):
+    """A config problem to show on screen: a short title plus a hint line."""
+
+    def __init__(self, title, hint):
+        super().__init__(title)
+        self.hint = hint
+
+
 def load_remote(url):
     """Fetch Dashy's main config plus any sub-pages it lists."""
     raw = fetch_text(url)
-    title, sections, pages = dashy.extract_services(dashy.parse_yaml(raw))
+    title, sections, pages = dashy.extract_services(dashy.parse_config_text(raw))
     for page in pages:
         try:
             page_raw = fetch_text(urllib.parse.urljoin(url, page))
-            _, page_sections, _ = dashy.extract_services(dashy.parse_yaml(page_raw))
+            _, page_sections, _ = dashy.extract_services(dashy.parse_config_text(page_raw))
             sections.extend(page_sections)
         except Exception as exc:
             print("Homelab: skipping Dashy page", page, exc)
@@ -148,7 +164,19 @@ def load_remote(url):
 
 
 def load_config(env):
-    """Return (title, sections, source). Raises with a short message on failure."""
+    """Return (title, sections, source). Raises ConfigError on failure.
+
+    Order: HOMELAB_SERVICES (inline), DASHY_URL (or its cached copy), then a
+    conf.yml bundled in the App directory.
+    """
+    inline = (env.get("HOMELAB_SERVICES") or "").strip()
+    if inline:
+        try:
+            title, sections, _ = dashy.extract_services(dashy.parse_inline_services(inline))
+        except (dashy.YamlError, ValueError) as exc:
+            print("Homelab: HOMELAB_SERVICES rejected:", exc)
+            raise ConfigError("BAD SERVICES CONFIG", "CHECK HOMELAB-SERVICES IN APP ENV") from exc
+        return title, sections, "ENV"
     base = (env.get("DASHY_URL") or "").strip()
     if base:
         url = config_url(base)
@@ -163,15 +191,17 @@ def load_config(env):
             print("Homelab: Dashy config fetch failed:", url, exc)
             if CACHE_CONFIG.is_file():
                 title, sections, _ = dashy.extract_services(
-                    dashy.parse_yaml(CACHE_CONFIG.read_text(encoding="utf-8")))
+                    dashy.parse_config_text(CACHE_CONFIG.read_text(encoding="utf-8")))
                 return title, sections, "CACHED"
             if not LOCAL_CONFIG.is_file():
-                raise RuntimeError("DASHY " + checks.describe_error(exc))
+                if isinstance(exc, dashy.YamlError):
+                    raise ConfigError("BAD DASHY CONFIG", "CHECK THE FILE AT DASHY-URL") from exc
+                raise ConfigError("DASHY " + checks.describe_error(exc), "TAP TO RETRY") from exc
     if LOCAL_CONFIG.is_file():
         title, sections, _ = dashy.extract_services(
-            dashy.parse_yaml(LOCAL_CONFIG.read_text(encoding="utf-8")))
+            dashy.parse_config_text(LOCAL_CONFIG.read_text(encoding="utf-8")))
         return title, sections, "LOCAL"
-    raise RuntimeError("SET DASHY URL")
+    raise ConfigError("NO SERVICES", "SET DASHY-URL OR HOMELAB-SERVICES")
 
 
 # -- pages ----------------------------------------------------------------------
@@ -221,6 +251,7 @@ class Board:
     def reload(self):
         self.loading = True
         self.error = None
+        self.error_hint = ""
         self.dirty = True
         threading.Thread(target=self._load, daemon=True).start()
 
@@ -228,9 +259,13 @@ class Board:
         try:
             title, sections, source = load_config(self.ctx.env)
             if not sections:
-                raise RuntimeError("NO SERVICES IN CONFIG")
+                raise ConfigError("NO SERVICES", "CONFIG HAS NO ITEMS WITH A URL")
         except Exception as exc:
-            self.error = str(exc) if isinstance(exc, RuntimeError) else checks.describe_error(exc)
+            if isinstance(exc, ConfigError):
+                self.error, self.error_hint = str(exc), exc.hint
+            else:
+                print("Homelab: config load failed:", exc)
+                self.error, self.error_hint = "CONFIG ERROR", checks.describe_error(exc)
             self.loading = False
             self.dirty = True
             return
@@ -338,7 +373,7 @@ class Board:
         if self.loading and not self.pages:
             self.draw_message("LOADING", "READING DASHY CONFIG")
         elif self.error:
-            self.draw_message(self.error, "SET DASHY-URL IN APP ENV" if "SET" in self.error else "TAP TO RETRY")
+            self.draw_message(self.error, self.error_hint)
         elif self.detail is not None:
             self.draw_detail(self.detail)
         else:

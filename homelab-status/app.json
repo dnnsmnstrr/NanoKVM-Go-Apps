@@ -3,13 +3,19 @@
   "name": "Homelab",
   "creator": "NanoKVM Community",
   "create_time": "2026-10-17",
-  "version": "0.1.0",
-  "desc": "Status board that checks every service in a Dashy config, with mDNS support for .local hosts.",
+  "version": "0.1.1",
+  "desc": "Status board for homelab services from a Dashy config or the App settings, with mDNS support for .local hosts.",
   "category": "utility",
   "env": {
+    "HOMELAB_SERVICES": {
+      "label": "Services",
+      "description": "Optional, instead of Dashy. JSON such as {\"Server\": {\"Gitea\": \"http://pi.local:8124\"}}, or text like: Server: Gitea=http://pi.local:8124, Beszel=http://pi.local:8090; NAS: UGOS=http://192.168.1.10:9999",
+      "required": false,
+      "default": ""
+    },
     "DASHY_URL": {
       "label": "Dashy URL",
-      "description": "Dashy address such as http://raspberrypi.local:4000, or a direct link to its conf.yml. Leave empty to use a conf.yml bundled in the App directory.",
+      "description": "Dashy address such as http://raspberrypi.local:4000, or a direct link to any Dashy-format YAML or JSON config. Ignored when Services is set.",
       "required": false,
       "default": ""
     },

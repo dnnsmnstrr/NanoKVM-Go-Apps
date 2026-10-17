@@ -6,7 +6,28 @@ tool, so the keypress is sent to the USB-connected target computer.
 
 ## Configure buttons
 
-Edit [`buttons.json`](./buttons.json), then remove and reinstall the App.
+There are two ways to set your buttons:
+
+- **Without rebuilding the App:** open **Settings > Apps > Installed > Macro
+  Pad > Environment** and set `MACRO_PAD_CONFIG`. Paste either the whole
+  configuration as JSON (one line is fine, because the field is single-line),
+  or an `http(s)` link to a JSON file, for example a raw Gist. A linked file is
+  cached on the device, so the pad still works when the link is unreachable.
+  Restart the App to apply changes.
+- **Bundled default:** edit [`buttons.json`](./buttons.json), then remove and
+  reinstall the App. This is used whenever `MACRO_PAD_CONFIG` is empty.
+
+If `MACRO_PAD_CONFIG` is invalid, the App falls back to the bundled buttons
+and shows the reason in yellow in the header: `CONFIG JSON ERR AT <position>`
+(a character offset in the JSON), `CONFIG URL ERR`, or `CONFIG INVALID` when
+the JSON parses but does not match the format below. `CACHED CONFIG` means the
+link was unreachable and the last downloaded copy is in use. The full error is
+written to the App's log.
+
+`MACRO_PAD_MODIFIER` overrides the configuration's `modifier` without
+editing it: `mac` (Command) or `windows`/`linux` (Control). This lets a
+Windows or Linux user keep the default buttons.
+
 The configuration object contains:
 
 - `title`: the small header title shown on the screen;

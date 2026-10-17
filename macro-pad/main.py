@@ -14,6 +14,12 @@ from appbase import DOWN, UP, WHITE, Rect, app, rgb565
 
 
 BUTTONS_PATH = Path(__file__).with_name("buttons.json")
+CONFIG_CACHE_PATH = BUTTONS_PATH.with_name(".buttons-cache.json")
+MODIFIER_ALIASES = {
+    "metaleft": "MetaLeft", "meta": "MetaLeft", "cmd": "MetaLeft", "command": "MetaLeft", "mac": "MetaLeft",
+    "macos": "MetaLeft", "controlleft": "ControlLeft", "control": "ControlLeft", "ctrl": "ControlLeft",
+    "windows": "ControlLeft", "linux": "ControlLeft",
+}
 BG = rgb565(10, 12, 18)
 BUTTON = rgb565(34, 40, 52)
 BUTTON_ACTIVE = rgb565(34, 104, 76)
@@ -104,9 +110,8 @@ def validate_buttons(buttons):
                 raise ValueError("button repeat must be an integer from 1 to 3")
 
 
-def load_buttons():
-    with BUTTONS_PATH.open("r", encoding="utf-8") as stream:
-        config = json.load(stream)
+def parse_buttons_config(config):
+    """Validate a buttons.json-style object and return (title, modifier, pages)."""
     if not isinstance(config, dict):
         raise ValueError("buttons.json must contain a configuration object")
     title = config.get("title", "MACRO PAD")
@@ -135,6 +140,66 @@ def load_buttons():
             validate_buttons(buttons)
             pages.append({"name": name, "buttons": buttons})
     return title, modifier, pages
+
+
+def fetch_config_text(url):
+    """Download a JSON button config, caching it for when the URL is unreachable."""
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": "NanoKVM-Macro-Pad"})
+        context = ssl._create_unverified_context()
+        with urllib.request.urlopen(request, context=context, timeout=8) as response:
+            text = response.read(256 * 1024).decode("utf-8")
+    except Exception as exc:
+        if CONFIG_CACHE_PATH.is_file():
+            print("Macro Pad: config URL failed, using cached copy:", exc)
+            return CONFIG_CACHE_PATH.read_text(encoding="utf-8"), "CACHED CONFIG"
+        raise RuntimeError("CONFIG URL ERR") from exc
+    try:
+        CONFIG_CACHE_PATH.write_text(text, encoding="utf-8")
+    except OSError:
+        pass
+    return text, ""
+
+
+def config_error_status(exc):
+    if isinstance(exc, json.JSONDecodeError):
+        return "CONFIG JSON ERR AT %d" % exc.pos
+    if isinstance(exc, RuntimeError):
+        return str(exc)
+    return "CONFIG INVALID"
+
+
+def load_buttons(env=None):
+    """Return (title, modifier, pages, notice).
+
+    MACRO_PAD_CONFIG may hold the buttons.json content as JSON or an http(s)
+    URL to it. When it is empty or invalid, the bundled buttons.json is used
+    and `notice` says why.
+    """
+    env = env or {}
+    source = (env.get("MACRO_PAD_CONFIG") or "").strip()
+    notice = ""
+    if source:
+        try:
+            if source.startswith(("http://", "https://")):
+                text, notice = fetch_config_text(source)
+            else:
+                text = source
+            title, modifier, pages = parse_buttons_config(json.loads(text))
+        except Exception as exc:
+            notice = config_error_status(exc)
+            print("Macro Pad: MACRO_PAD_CONFIG rejected, using buttons.json:", exc)
+        else:
+            return title, apply_modifier(env, modifier), pages, notice
+    with BUTTONS_PATH.open("r", encoding="utf-8") as stream:
+        title, modifier, pages = parse_buttons_config(json.load(stream))
+    return title, apply_modifier(env, modifier), pages, notice
+
+
+def apply_modifier(env, modifier):
+    """Let MACRO_PAD_MODIFIER override the config's @MOD key."""
+    override = (env.get("MACRO_PAD_MODIFIER") or "").strip().lower()
+    return MODIFIER_ALIASES.get(override, modifier)
 
 
 def load_dotenv():
@@ -289,13 +354,18 @@ def draw_icon(fb, button, rect):
                 fb.fill_rect(x0 + column * scale, y0 + row_index * scale, scale, scale, ICON)
 
 
-def draw(ctx, title, version, page, page_index, page_count, active, message, pages=None, picker=False):
+def draw(ctx, title, version, page, page_index, page_count, active, message, pages=None, picker=False, notice=""):
     fb = ctx.fb
     fb.clear(BG)
     header_margin = 16
-    fb.draw_text(header_margin, 14, title[:24], WHITE, 1)
-    version_text = "v" + version
-    fb.draw_text(ctx.width - fb.text_width(version_text, 1) - header_margin, 14, version_text, SUBTLE, 1)
+    if notice:
+        # The header stays visible in both panel orientations, unlike the
+        # bottom status line, so config problems are shown here.
+        fb.draw_text(header_margin, 14, notice[:26], ICON, 1)
+    else:
+        fb.draw_text(header_margin, 14, title[:24], WHITE, 1)
+        version_text = "v" + version
+        fb.draw_text(ctx.width - fb.text_width(version_text, 1) - header_margin, 14, version_text, SUBTLE, 1)
     buttons = page["buttons"]
     for index, (button, rect) in enumerate(zip(buttons, button_layout(ctx, len(buttons)))):
         bg = BUTTON_ACTIVE if index == active else BUTTON
@@ -351,7 +421,15 @@ def error_status(exc):
 
 @app()
 def main(ctx):
-    title, modifier, pages = load_buttons()
+    if (ctx.env.get("MACRO_PAD_CONFIG") or "").strip().startswith(("http://", "https://")):
+        ctx.fb.clear(BG)
+        ctx.fb.text_center(ctx.width // 2, ctx.height // 2 - 8, "LOADING CONFIG", WHITE, 2)
+        ctx.flush()
+    title, modifier, pages, config_notice = load_buttons(ctx.env)
+
+    def redraw(*args):
+        draw(*args, notice=config_notice)
+
     with BUTTONS_PATH.with_name("app.json").open("r", encoding="utf-8") as stream:
         version = json.load(stream).get("version", "?")
     active = None
@@ -367,7 +445,7 @@ def main(ctx):
 
     if api_key:
         message = "CONNECTING"
-        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
+        redraw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
         try:
             client = MCPClient(mcp_url, api_key)
             client.initialize()
@@ -377,7 +455,7 @@ def main(ctx):
             print("Macro Pad MCP initialization failed:", exc)
     else:
         message = "SET MCP KEY"
-    draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
+    redraw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
 
     def change_page(direction):
         nonlocal page_index, message, page_picker
@@ -387,7 +465,7 @@ def main(ctx):
             page_index = (page_index - 1) % len(pages)
         message = ""
         page_picker = False
-        draw(ctx, title, version, pages[page_index], page_index, len(pages), None, message, pages, page_picker)
+        redraw(ctx, title, version, pages[page_index], page_index, len(pages), None, message, pages, page_picker)
 
     def on_tap(x, y):
         nonlocal active, message, page_index, page_picker
@@ -398,11 +476,11 @@ def main(ctx):
                 page_index = selected
             page_picker = False
             message = ""
-            draw(ctx, title, version, pages[page_index], page_index, len(pages), None, message, pages, page_picker)
+            redraw(ctx, title, version, pages[page_index], page_index, len(pages), None, message, pages, page_picker)
             return
         if len(pages) > 1 and page_indicator_rect(ctx).contains(x, y):
             page_picker = True
-            draw(ctx, title, version, pages[page_index], page_index, len(pages), None, "", pages, page_picker)
+            redraw(ctx, title, version, pages[page_index], page_index, len(pages), None, "", pages, page_picker)
             return
         if len(pages) > 1:
             previous, next_page = page_nav_layout(ctx)
@@ -417,7 +495,7 @@ def main(ctx):
         if index is None:
             return
         active = index
-        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, "SENDING", pages, page_picker)
+        redraw(ctx, title, version, pages[page_index], page_index, len(pages), active, "SENDING", pages, page_picker)
         if client is None:
             message = "NO MCP CONNECTION"
         else:
@@ -453,7 +531,7 @@ def main(ctx):
                 print("Macro Pad press_keys failed:", exc)
         time.sleep(0.15)
         active = None
-        draw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
+        redraw(ctx, title, version, pages[page_index], page_index, len(pages), active, message, pages, page_picker)
 
     def on_swipe(kind, _x, _y):
         nonlocal page_index, message
