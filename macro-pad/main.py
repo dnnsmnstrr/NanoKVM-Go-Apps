@@ -214,13 +214,13 @@ def page_indicator_rect(ctx):
 
 
 def page_picker_layout(ctx, pages):
-    row_height = 24
+    row_height = 36
     top = 28
     panel_height = min(ctx.height - top - 36, row_height * len(pages) + 8)
     panel = Rect(16, top, ctx.width - 32, panel_height)
     rows = []
     for index, _page in enumerate(pages):
-        rows.append(Rect(panel.x + 4, panel.y + 4 + index * row_height, panel.w - 8, row_height - 2))
+        rows.append(Rect(panel.x + 4, panel.y + 4 + index * row_height, panel.w - 8, row_height - 6))
     return panel, rows
 
 
@@ -282,7 +282,7 @@ def draw(ctx, title, version, page, page_index, page_count, active, message, pag
             row_bg = BUTTON_ACTIVE if index == page_index else BUTTON
             fb.fill_rect(row.x, row.y, row.w, row.h, row_bg)
             label = page_item["name"] or "Page %d" % (index + 1)
-            fb.draw_text(row.x + 8, row.y + 6, label[:24], WHITE, 1)
+            fb.draw_text(row.x + 10, row.y + 10, label[:24], WHITE, 1)
     fb.flush()
 
 
