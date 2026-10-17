@@ -8,6 +8,7 @@ import ssl
 import time
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 from appbase import DOWN, UP, WHITE, Rect, app, rgb565
 
@@ -68,6 +69,11 @@ def validate_buttons(buttons):
         if "text" in button:
             if not isinstance(button["text"], str) or not button["text"]:
                 raise ValueError("text buttons need non-empty text")
+        elif "url" in button:
+            url = button["url"]
+            parsed = urlparse(url) if isinstance(url, str) else None
+            if parsed is None or parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError("url buttons need a valid http or https URL")
         elif "sequence" in button:
             sequence = button["sequence"]
             if not isinstance(sequence, list) or not sequence:
@@ -396,6 +402,12 @@ def main(ctx):
                 button = buttons[index]
                 if "text" in button:
                     client.type_text(button["text"])
+                elif "url" in button:
+                    client.press_keys([modifier, "KeyL"])
+                    time.sleep(0.08)
+                    client.type_text(button["url"])
+                    time.sleep(0.08)
+                    client.press_keys(["Enter"])
                 elif "sequence" in button:
                     for step_index, step in enumerate(button["sequence"]):
                         if step_index:

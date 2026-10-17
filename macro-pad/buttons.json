@@ -16,7 +16,7 @@
       "buttons": [
         {"label": "Copy", "icon": "📋", "keys": ["@MOD", "KeyC"]},
         {"label": "Paste", "icon": "📎", "keys": ["@MOD", "KeyV"]},
-        {"label": "Type Hello", "icon": "💬", "text": "Hello from NanoKVM"},
+        {"label": "NanoKVM", "icon": "🌐", "url": "https://192.168.178.83"},
         {"label": "Press A", "icon": "A", "keys": ["KeyA"]}
       ]
     },

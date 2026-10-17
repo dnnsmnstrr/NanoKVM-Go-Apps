@@ -40,6 +40,7 @@ Each button contains:
   replaced by the configured modifier;
 - `sequence`: optional ordered list of key arrays, useful for actions such as
   select-all followed by Backspace;
+- `url`: optional HTTP(S) URL to open in the target computer's browser;
 - `text`: optional text to type instead of sending a shortcut.
 
 Example:
@@ -110,6 +111,10 @@ macOS Dictation.
 The example Clear button sends `@MOD+KeyA` followed by `Backspace`, clearing
 the focused input field. On macOS, `@MOD` is `MetaLeft` (Command); on
 Windows/Linux, set the top-level modifier to `ControlLeft`.
+
+URL buttons focus the browser address bar with `@MOD+KeyL`, type the URL, and
+press Enter. The example NanoKVM button opens `https://192.168.178.83` on the
+target computer. The URL must be reachable from that computer.
 
 ## Device setup
 
