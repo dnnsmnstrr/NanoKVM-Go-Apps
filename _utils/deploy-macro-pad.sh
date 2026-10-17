@@ -4,11 +4,12 @@ set -Eeuo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 device_url="${NANOKVM_URL:-https://192.168.178.83}"
 cookie_file="${NANOKVM_COOKIE_FILE:-/tmp/nanokvm-cookie2}"
-archive="$(mktemp /tmp/macro-pad-deploy.XXXXXX.zip)"
-inspect_response="$(mktemp /tmp/macro-pad-inspect.XXXXXX.json)"
-delete_response="$(mktemp /tmp/macro-pad-delete.XXXXXX.json)"
-install_response="$(mktemp /tmp/macro-pad-install.XXXXXX.jsonl)"
-trap 'rm -f "$archive" "$inspect_response" "$delete_response" "$install_response"' EXIT
+temp_dir="$(mktemp -d /tmp/macro-pad-deploy.XXXXXX)"
+archive="$temp_dir/macro-pad.zip"
+inspect_response="$temp_dir/inspect.json"
+delete_response="$temp_dir/delete.json"
+install_response="$temp_dir/install.jsonl"
+trap 'rm -rf "$temp_dir"' EXIT
 
 if [[ ! -f "$cookie_file" ]]; then
   echo "Missing authenticated NanoKVM cookie: $cookie_file" >&2
