@@ -3,6 +3,15 @@
   "modifier": "MetaLeft",
   "pages": [
     {
+      "name": "AI Tasks",
+      "buttons": [
+        {"label": "Accept", "icon": "✅", "keys": ["Enter"]},
+        {"label": "Deny", "icon": "❌", "keys": ["Escape"]},
+        {"label": "Dictate", "icon": "🎙", "keys": ["ControlLeft"], "repeat": 2},
+        {"label": "Clear", "icon": "❌", "sequence": [["@MOD", "KeyA"], ["Backspace"]]}
+      ]
+    },
+    {
       "name": "Clipboard",
       "buttons": [
         {"label": "Copy", "icon": "📋", "keys": ["@MOD", "KeyC"]},
@@ -18,15 +27,6 @@
         {"label": "Enter", "icon": "↵", "keys": ["Enter"]},
         {"label": "Left", "icon": "←", "keys": ["ArrowLeft"]},
         {"label": "Right", "icon": "→", "keys": ["ArrowRight"]}
-      ]
-    },
-    {
-      "name": "AI Tasks",
-      "buttons": [
-        {"label": "Accept", "icon": "✅", "keys": ["Enter"]},
-        {"label": "Deny", "icon": "❌", "keys": ["Escape"]},
-        {"label": "Dictate", "icon": "🎙", "keys": ["ControlLeft"], "repeat": 2},
-        {"label": "Clear", "icon": "❌", "sequence": [["@MOD", "KeyA"], ["Backspace"]]}
       ]
     }
   ]
