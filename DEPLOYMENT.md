@@ -106,6 +106,16 @@ The reliable workflow is: create a ZIP with one top-level App directory,
 remove the old App in the web UI, upload/install the ZIP, and restore the
 protected environment values.
 
+For the Macro Pad development loop, use the repository helper:
+
+```sh
+./_utils/deploy-macro-pad.sh
+```
+
+It uses the authenticated cookie at `/tmp/nanokvm-cookie2` by default and
+deploys to `https://192.168.178.83`. Override those with `NANOKVM_COOKIE_FILE`
+and `NANOKVM_URL` when needed.
+
 ## Web UI deployment
 
 The device web UI has an authenticated **Settings > Apps > Installed > Upload**

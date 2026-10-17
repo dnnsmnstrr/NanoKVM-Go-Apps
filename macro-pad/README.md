@@ -129,6 +129,16 @@ computer. The URL must be reachable from that computer.
 3. Leave `NANOKVM_MCP_URL` at `https://127.0.0.1/api/mcp`.
 4. Launch **Macro Pad** from the NanoKVM Apps page.
 
+For quick development updates from this checkout, run:
+
+```sh
+./_utils/deploy-macro-pad.sh
+```
+
+The script packages the current App, removes the installed copy, and uploads
+the new version. It uses `/tmp/nanokvm-cookie2` by default; set
+`NANOKVM_COOKIE_FILE` if your authenticated browser cookie is stored elsewhere.
+
 For development convenience, copy `.env.example` to `.env` in this App
 directory and fill in `NANOKVM_MCP_KEY`. The App uses the NanoKVM-provided
 environment first, then falls back to the bundled `.env` file. Therefore a
