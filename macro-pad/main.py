@@ -205,8 +205,8 @@ def button_layout(ctx):
 
 
 def page_nav_layout(ctx):
-    y = ctx.height - 24
-    return Rect(16, y, 36, 16), Rect(ctx.width - 52, y, 36, 16)
+    y = ctx.height - 30
+    return Rect(16, y, 52, 24), Rect(ctx.width - 68, y, 52, 24)
 
 
 def draw_icon(fb, button, rect):
@@ -234,9 +234,7 @@ def draw(ctx, title, version, page, page_index, page_count, active, message):
     header_margin = 16
     fb.draw_text(header_margin, 4, title[:24], WHITE, 1)
     version_text = "v" + version
-    fb.draw_text(ctx.width - fb.text_width(version_text, 1) - header_margin, 4, version_text, SUBTLE, 1)
-    page_text = "%d/%d" % (page_index + 1, page_count)
-    fb.text_center(ctx.width // 2, 4, page_text, SUBTLE, 1)
+    fb.draw_text(ctx.width - fb.text_width(version_text, 1) - header_margin, 14, version_text, SUBTLE, 1)
     if page["name"]:
         fb.text_center(ctx.width // 2, 15, page["name"][:20], SUBTLE, 1)
     buttons = page["buttons"]
@@ -256,7 +254,9 @@ def draw(ctx, title, version, page, page_index, page_count, active, message):
             fb.fill_rect(rect.x, rect.y, rect.w, rect.h, BUTTON)
             fb.draw_line(rect.x, rect.y, rect.x + rect.w - 1, rect.y, BORDER)
             fb.draw_line(rect.x, rect.y + rect.h - 1, rect.x + rect.w - 1, rect.y + rect.h - 1, BORDER)
-            fb.text_center(rect.cx, rect.y + 4, label, WHITE, 1)
+            fb.text_center(rect.cx, rect.y + 8, label, WHITE, 2)
+        page_text = "%d/%d" % (page_index + 1, page_count)
+        fb.text_center(ctx.width // 2, ctx.height - 22, page_text, SUBTLE, 1)
     if message:
         fb.text_center(ctx.width // 2, ctx.height - 12, message[:28], SUBTLE, 1)
     fb.flush()
