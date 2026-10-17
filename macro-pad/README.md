@@ -112,9 +112,10 @@ The example Clear button sends `@MOD+KeyA` followed by `Backspace`, clearing
 the focused input field. On macOS, `@MOD` is `MetaLeft` (Command); on
 Windows/Linux, set the top-level modifier to `ControlLeft`.
 
-URL buttons focus the browser address bar with `@MOD+KeyL`, type the URL, and
-press Enter. The example NanoKVM button opens `https://192.168.178.83` on the
-target computer. The URL must be reachable from that computer.
+URL buttons launch/focus the browser with the configured Hyper+B shortcut,
+then focus the address bar with `@MOD+KeyL`, type the URL, and press Enter.
+The example NanoKVM button opens `https://192.168.178.83` on the target
+computer. The URL must be reachable from that computer.
 
 ## Device setup
 

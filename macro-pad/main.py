@@ -403,6 +403,10 @@ def main(ctx):
                 if "text" in button:
                     client.type_text(button["text"])
                 elif "url" in button:
+                    # Launch/focus the target browser through the user's
+                    # Hyper+B shortcut before navigating to the URL.
+                    client.press_keys(["ControlLeft", "AltLeft", "ShiftLeft", "MetaLeft", "KeyB"])
+                    time.sleep(0.35)
                     client.press_keys([modifier, "KeyL"])
                     time.sleep(0.08)
                     client.type_text(button["url"])
