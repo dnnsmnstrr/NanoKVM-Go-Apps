@@ -307,7 +307,7 @@ def main(ctx):
             page_index = (page_index + 1) % len(pages)
         else:
             page_index = (page_index - 1) % len(pages)
-        message = "PAGE %d/%d" % (page_index + 1, len(pages))
+        message = ""
         draw(ctx, title, version, pages[page_index], page_index, len(pages), None, message)
 
     def on_tap(x, y):
