@@ -106,6 +106,14 @@ names include `ArrowLeft`, `ArrowRight`, `Enter`, `Tab`, `Space`, and `Escape`.
 3. Leave `NANOKVM_MCP_URL` at `https://127.0.0.1/api/mcp`.
 4. Launch **Macro Pad** from the NanoKVM Apps page.
 
+For development convenience, copy `.env.example` to `.env` in this App
+directory and fill in `NANOKVM_MCP_KEY`. The App uses the NanoKVM-provided
+environment first, then falls back to the bundled `.env` file. Therefore a
+ZIP containing `.env` effectively bakes the key into the App. This is
+convenient but less secure: anyone who can download or inspect that App can
+recover the key. Keep `.env` out of Git and use the protected App environment
+for shared or production installs.
+
 MCP uses browser-style key names: `ControlLeft`, `ShiftLeft`, `AltLeft`,
 `MetaLeft`, `KeyA` through `KeyZ`, `Digit1` through `Digit0`, `Enter`,
 `Escape`, `Tab`, `Space`, `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`,

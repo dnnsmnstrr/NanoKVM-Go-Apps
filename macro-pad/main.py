@@ -100,6 +100,24 @@ def load_buttons():
     return title, modifier, pages
 
 
+def load_dotenv():
+    """Load simple KEY=value settings bundled beside the App for development."""
+    values = {}
+    env_path = BUTTONS_PATH.with_name(".env")
+    if not env_path.is_file():
+        return values
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("\"'")
+        if key:
+            values[key] = value
+    return values
+
+
 class MCPClient:
     """Small dependency-free MCP streamable-HTTP client for press_keys."""
 
@@ -265,8 +283,11 @@ def main(ctx):
     page_index = 0
     message = "READY"
     client = None
-    api_key = ctx.env.get("NANOKVM_MCP_KEY", "").strip()
-    mcp_url = ctx.env.get("NANOKVM_MCP_URL", "https://127.0.0.1/api/mcp").strip()
+    bundled_env = load_dotenv()
+    api_key = (ctx.env.get("NANOKVM_MCP_KEY") or bundled_env.get("NANOKVM_MCP_KEY", "")).strip()
+    mcp_url = (ctx.env.get("NANOKVM_MCP_URL") or bundled_env.get(
+        "NANOKVM_MCP_URL", "https://127.0.0.1/api/mcp"
+    )).strip()
 
     if api_key:
         message = "CONNECTING"
