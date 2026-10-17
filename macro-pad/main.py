@@ -264,10 +264,9 @@ def draw(ctx, title, version, page, page_index, page_count, active, message, pag
     if page_count > 1:
         previous, next_page = page_nav_layout(ctx)
         for rect, label in ((previous, "<"), (next_page, ">")):
-            fb.fill_rect(rect.x, rect.y, rect.w, rect.h, BUTTON)
-            fb.draw_line(rect.x, rect.y, rect.x + rect.w - 1, rect.y, BORDER)
-            fb.draw_line(rect.x, rect.y + rect.h - 1, rect.x + rect.w - 1, rect.y + rect.h - 1, BORDER)
-            fb.text_center(rect.cx, rect.y + 8, label, WHITE, 2)
+            # Keep the full rect as a generous invisible hit target; only the
+            # small centered chevron is shown.
+            fb.text_center(rect.cx, rect.y + 8, label, SUBTLE, 2)
         page_text = "%d/%d" % (page_index + 1, page_count)
         fb.text_center(ctx.width // 2, ctx.height - 22, page_text, SUBTLE, 1)
     if message:
