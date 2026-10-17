@@ -7,6 +7,8 @@ import json
 import ssl
 import urllib.parse
 
+from kvmkit import env as kenv
+
 # Domains a tap acts on, and the service it calls. Everything else is
 # read-only and opens a detail view instead.
 TOGGLE_DOMAINS = ("light", "switch", "fan", "input_boolean", "automation", "siren", "humidifier", "cover")
@@ -181,16 +183,8 @@ def parse_entities_config(text):
                             for item in entries]
             pages.append({"name": str(page.get("name") or "Home"), "entities": entities})
     else:
-        for chunk in text.replace("\n", ";").split(";"):
-            chunk = chunk.strip()
-            if not chunk:
-                continue
-            name = "Home"
-            colon = chunk.find(":")
-            if colon > 0 and "." not in chunk[:colon] and "=" not in chunk[:colon]:
-                name, chunk = chunk[:colon].strip(), chunk[colon + 1:]
-            entities = [_entity(part) for part in chunk.split(",") if part.strip()]
-            pages.append({"name": name, "entities": entities})
+        for name, entries in kenv.sections(text, "Home"):
+            pages.append({"name": name, "entities": [_entity(entry) for entry in entries]})
     return [page for page in pages if page["entities"]]
 
 

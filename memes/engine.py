@@ -18,6 +18,7 @@ from array import array
 from pathlib import Path
 
 from appbase import Rect
+from kvmkit.screen import visible_rect  # noqa: F401  (re-exported for clips)
 
 BLACK = 0x0000
 WHITE = 0xFFFF
@@ -35,16 +36,6 @@ def hsv(h, s=1.0, v=1.0):
     r, g, b = [(c, x, 0), (x, c, 0), (0, c, x), (0, x, c), (x, 0, c), (c, 0, x)][int(h) % 6]
     m = v - c
     return rgb(int((r + m) * 255), int((g + m) * 255), int((b + m) * 255))
-
-
-def visible_rect(fb):
-    if fb.rotate == 90:
-        return Rect(0, 0, fb.width, fb.height - 14)
-    if fb.rotate == 270:
-        return Rect(0, 14, fb.width, fb.height - 14)
-    if fb.rotate == 180:
-        return Rect(0, 0, fb.width - 14, fb.height)
-    return Rect(14, 0, fb.width - 14, fb.height)
 
 
 # -- text with a few extra glyphs ------------------------------------------------

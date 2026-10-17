@@ -8,21 +8,18 @@ import queue
 import threading
 import time
 
-from appbase import DOWN as SWIPE_DOWN, UP as SWIPE_UP, WHITE, Rect, app, rgb565
+from appbase import WHITE, Rect, app, rgb565
 
 import hass
-import mdns
+from kvmkit import env as kenv, net
+from kvmkit.pager import Pager
+from kvmkit.screen import Layout
+from kvmkit.text import ago, fit, text, wrap
+from kvmkit.theme import BAD, BG, DIM, GOOD, PANEL, SUBTLE
 
-BG = rgb565(10, 12, 18)
-PANEL = rgb565(24, 28, 38)
 PANEL_ON = rgb565(70, 56, 18)
-BORDER = rgb565(60, 68, 86)
-SUBTLE = rgb565(150, 160, 175)
-DIM = rgb565(95, 102, 118)
 ICON_OFF = rgb565(120, 130, 150)
 ICON_ON = rgb565(255, 205, 90)
-GOOD = rgb565(40, 200, 110)
-BAD = rgb565(240, 70, 70)
 CONFIRM = rgb565(240, 70, 70)
 
 HEADER_H = 30
@@ -31,13 +28,6 @@ COLUMNS = 2
 ROWS = 3
 GAP = 6
 CONFIRM_SECONDS = 3.0
-
-FONT_CHARS = set(" $%-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-FONT_SUBSTITUTES = {
-    "_": "-", ",": ".", ";": ":", "!": ".", "?": ".", "&": ".", "=": ":", "+": "-", "|": "/",
-    "(": " ", ")": " ", "'": "", "°": "", "Ä": "AE", "Ö": "OE", "Ü": "UE",
-    "ä": "AE", "ö": "OE", "ü": "UE", "ß": "SS", "é": "E", "è": "E",
-}
 
 ICONS = {
     "bulb": ("00111100", "01111110", "01111110", "01111110", "00111100", "00011000", "00011000", "00011000"),
@@ -61,74 +51,12 @@ ICONS = {
 }
 
 
-def text(value):
-    """Uppercase and replace characters the 8x8 font cannot draw."""
-    result = []
-    for char in str(value):
-        if char in FONT_SUBSTITUTES:
-            result.append(FONT_SUBSTITUTES[char])
-            continue
-        char = char.upper()
-        result.append(char if char in FONT_CHARS else " ")
-    return "".join(result)
-
-
-def fit(value, width, scale=1):
-    return text(value)[:max(0, width // (8 * scale))]
-
-
-def wrap(value, width, lines, scale=1):
-    """Wrap at spaces where possible; split words that are too long."""
-    limit = max(1, width // (8 * scale))
-    chunks = []
-    for word in text(value).split():
-        if chunks and len(chunks[-1]) + 1 + len(word) <= limit:
-            chunks[-1] += " " + word
-            continue
-        while len(word) > limit:
-            chunks.append(word[:limit])
-            word = word[limit:]
-        chunks.append(word)
-    if len(chunks) > lines:
-        chunks = chunks[:lines]
-        chunks[-1] = chunks[-1][:limit - 2] + ".."
-    return chunks
-
-
-def ago(seconds):
-    seconds = max(0, int(seconds))
-    if seconds < 60:
-        return "%dS" % seconds
-    if seconds < 3600:
-        return "%dM" % (seconds // 60)
-    if seconds < 86400:
-        return "%dH %dM" % (seconds // 3600, seconds % 3600 // 60)
-    return "%dD %dH" % (seconds // 86400, seconds % 86400 // 3600)
-
-
 def changed_seconds(state):
     try:
         changed = datetime.datetime.fromisoformat(state["last_changed"])
         return (datetime.datetime.now(datetime.timezone.utc) - changed).total_seconds()
     except (KeyError, TypeError, ValueError):
         return None
-
-
-def visible_rect(fb):
-    if fb.rotate == 90:
-        return Rect(0, 0, fb.width, fb.height - 14)
-    if fb.rotate == 270:
-        return Rect(0, 14, fb.width, fb.height - 14)
-    if fb.rotate == 180:
-        return Rect(0, 0, fb.width - 14, fb.height)
-    return Rect(14, 0, fb.width - 14, fb.height)
-
-
-def env_number(env, name, default):
-    try:
-        return max(1.0, float(env.get(name, "") or default))
-    except ValueError:
-        return float(default)
 
 
 def paginate(config_pages, per_page):
@@ -146,10 +74,12 @@ class Panel:
     def __init__(self, ctx):
         self.ctx = ctx
         env = ctx.env
-        self.view = visible_rect(ctx.fb)
-        self.content_top = self.view.y + HEADER_H
-        self.content_bottom = self.view.y + self.view.h - FOOTER_H
-        self.refresh_seconds = env_number(env, "HA_REFRESH", 5)
+        self.layout = Layout(ctx.fb, HEADER_H, FOOTER_H)
+        self.pager = Pager(self.layout)
+        self.view = self.layout.view
+        self.content_top = self.layout.content.y
+        self.content_bottom = self.layout.footer.y
+        self.refresh_seconds = kenv.number(env, "HA_REFRESH", 5, minimum=1)
         self.client = None
         token = (env.get("HA_TOKEN") or "").strip()
         url = (env.get("HA_URL") or "").strip() or "http://homeassistant.local:8123"
@@ -159,7 +89,6 @@ class Panel:
         self.lock = threading.RLock()
         self.states = {}
         self.pages = []
-        self.page_index = 0
         self.pending = {}
         self.confirm = None
         self.detail = None
@@ -171,6 +100,10 @@ class Panel:
         self.drawn_at = 0.0
         self.jobs = queue.Queue()
         self.stop = threading.Event()
+
+    @property
+    def page_index(self):
+        return self.pager.index
 
     # -- background worker ------------------------------------------------------
     def start(self):
@@ -239,7 +172,7 @@ class Panel:
         with self.lock:
             self.states.update(states)
             self.pages = paginate(config_pages, COLUMNS * ROWS)
-            self.page_index = min(self.page_index, len(self.pages) - 1)
+            self.pager.set_count(len(self.pages))
             self.loading = False
             self.error = None
             self.version += 1
@@ -281,38 +214,30 @@ class Panel:
 
     # -- input ------------------------------------------------------------------
     def tile_rects(self):
-        width = (self.view.w - 8 - (COLUMNS - 1) * GAP) // COLUMNS
-        height = (self.content_bottom - self.content_top - 4 - (ROWS - 1) * GAP) // ROWS
-        return [Rect(self.view.x + 4 + (index % COLUMNS) * (width + GAP),
-                     self.content_top + 2 + (index // COLUMNS) * (height + GAP), width, height)
-                for index in range(COLUMNS * ROWS)]
-
-    def footer_zones(self):
-        third = self.view.w // 3
-        y = self.content_bottom
-        return (Rect(self.view.x, y, third, FOOTER_H),
-                Rect(self.view.x + third, y, self.view.w - 2 * third, FOOTER_H),
-                Rect(self.view.x + self.view.w - third, y, third, FOOTER_H))
+        # Six tiles either way: 3x2 on a wide (landscape) screen, 2x3 on a tall one.
+        columns, rows = (3, 2) if self.view.w > self.view.h else (COLUMNS, ROWS)
+        width = (self.view.w - 8 - (columns - 1) * GAP) // columns
+        height = (self.content_bottom - self.content_top - 4 - (rows - 1) * GAP) // rows
+        return [Rect(self.view.x + 4 + (index % columns) * (width + GAP),
+                     self.content_top + 2 + (index // columns) * (height + GAP), width, height)
+                for index in range(columns * rows)]
 
     def detail_back(self):
         return Rect(self.view.x + 16, self.view.y + self.view.h - 36, self.view.w - 32, 30)
 
-    def change_page(self, step):
+    def page_changed(self):
         with self.lock:
-            if not self.pages:
-                return
-            self.page_index = (self.page_index + step) % len(self.pages)
             self.confirm = None
             self.version += 1
         self.jobs.put(("refresh",))
 
     def on_swipe(self, kind, _x, _y):
-        if self.detail is not None:
+        if self.detail is not None or not self.pages:
             return
-        if kind == SWIPE_UP:
-            self.change_page(1)
-        elif kind == SWIPE_DOWN:
-            self.change_page(-1)
+        with self.lock:
+            changed = self.pager.on_swipe(kind)
+        if changed:
+            self.page_changed()
 
     def on_tap(self, x, y):
         with self.lock:
@@ -329,11 +254,10 @@ class Panel:
             self.jobs.put(("refresh",))
             return
         if y >= self.content_bottom:
-            previous, _middle, following = self.footer_zones()
-            if previous.contains(x, y):
-                self.change_page(-1)
-            elif following.contains(x, y):
-                self.change_page(1)
+            with self.lock:
+                action = self.pager.on_tap(x, y)
+            if action in ("prev", "next"):
+                self.page_changed()
             else:
                 self.jobs.put(("refresh",))
             return
@@ -405,14 +329,7 @@ class Panel:
             fb.text_center(self.view.cx, cy + 26 + index * 12, line, SUBTLE, 1)
 
     def draw_header(self, name):
-        fb = self.ctx.fb
-        clock = time.strftime("%H:%M")
-        clock_w = fb.text_width(clock, 2)
-        right = self.view.x + self.view.w - 8
-        fb.draw_text(self.view.x + 8, self.view.y + 7, fit(name, self.view.w - clock_w - 36, 2), WHITE, 2)
-        fb.draw_text(right - clock_w, self.view.y + 7, clock, SUBTLE, 2)
-        fb.fill_rect(right - clock_w - 12, self.view.y + 11, 6, 6, BAD if self.error else GOOD)
-        fb.fill_rect(self.view.x + 4, self.view.y + HEADER_H - 4, self.view.w - 8, 1, BORDER)
+        self.pager.draw_header(self.ctx.fb, name, right=time.strftime("%H:%M"), dot=BAD if self.error else GOOD)
 
     def draw_icon(self, name, x, y, color, scale=2):
         for row_index, row in enumerate(ICONS.get(name, ICONS["dot"])):
@@ -462,37 +379,28 @@ class Panel:
             fb.draw_text(rect.x + rect.w - 6 - fb.text_width(secondary), rect.y + 26,
                          secondary, CONFIRM if confirming else SUBTLE, 1)
         label = entity.get("label") or (hass.friendly_name(state) if state else entity_id)
-        lines = wrap(label, rect.w - 12, 2)
+        lines = wrap(label, rect.w - 8, 2)
         y = rect.y + rect.h - 4 - 11 * len(lines)
         for line in lines:
-            fb.draw_text(rect.x + 6, y, line, SUBTLE if not active else WHITE, 1)
+            fb.draw_text(rect.x + 4, y, line, SUBTLE if not active else WHITE, 1)
             y += 11
 
     def draw_footer(self):
-        fb = self.ctx.fb
-        previous, middle, following = self.footer_zones()
-        cy = previous.y + FOOTER_H // 2
-        if len(self.pages) > 1:
-            fb.draw_line(previous.cx + 4, cy - 7, previous.cx - 4, cy, WHITE)
-            fb.draw_line(previous.cx - 4, cy, previous.cx + 4, cy + 7, WHITE)
-            fb.draw_line(following.cx - 4, cy - 7, following.cx + 4, cy, WHITE)
-            fb.draw_line(following.cx + 4, cy, following.cx - 4, cy + 7, WHITE)
-        fb.text_center(middle.cx, cy - 10, "%d/%d" % (self.page_index + 1, len(self.pages)), SUBTLE, 1)
         if self.error:
             status, color = self.error, BAD
         elif self.updated_at is not None:
             status, color = ago(time.monotonic() - self.updated_at) + " AGO", DIM
         else:
             status, color = "", DIM
-        fb.text_center(middle.cx, cy + 3, fit(status, middle.w + 40), color, 1)
+        self.pager.draw_footer(self.ctx.fb, status, color)
 
     def draw_detail(self, entity):
         fb = self.ctx.fb
         entity_id = entity["entity_id"]
         state = self.states.get(entity_id)
-        x = self.view.x + 10
-        width = self.view.w - 20
         y = self.view.y + 10
+        left, right = self.layout.safe_span(y, y + 36)
+        x, width = left, right - left
         label = entity.get("label") or (hass.friendly_name(state) if state else entity_id)
         for line in wrap(label, width, 2, 2):
             fb.draw_text(x, y, line, WHITE, 2)
@@ -528,7 +436,7 @@ class Panel:
 
 @app()
 def main(ctx):
-    mdns.install_mdns_fallback()
+    net.install_mdns_fallback()
     panel = Panel(ctx)
     panel.start()
     try:

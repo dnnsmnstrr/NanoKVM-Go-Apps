@@ -10,21 +10,20 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from appbase import DOWN as SWIPE_DOWN, UP as SWIPE_UP, WHITE, Rect, app, rgb565
+from appbase import WHITE, Rect, app, rgb565
 
 import checks
 import dashy
+from kvmkit import env as kenv, net
+from kvmkit.pager import Pager
+from kvmkit.screen import Layout
+from kvmkit.text import ago, fit, text, wrap
+from kvmkit.theme import BG, DIM, PANEL, PANEL_ACTIVE, SUBTLE
 
 APP_DIR = Path(__file__).resolve().parent
 LOCAL_CONFIG = APP_DIR / "conf.yml"
 CACHE_CONFIG = APP_DIR / ".dashy-cache.yml"
 
-BG = rgb565(10, 12, 18)
-PANEL = rgb565(24, 28, 38)
-PANEL_ACTIVE = rgb565(40, 48, 64)
-BORDER = rgb565(60, 68, 86)
-SUBTLE = rgb565(150, 160, 175)
-DIM = rgb565(95, 102, 118)
 STATUS_COLORS = {
     checks.UP: rgb565(40, 200, 110),
     checks.WARN: rgb565(255, 170, 40),
@@ -42,78 +41,9 @@ STATUS_LABELS = {
 # Worst first: the colour of a group is the colour of its worst member.
 SEVERITY = [checks.DOWN, checks.WARN, checks.PENDING, checks.UP, checks.OFF]
 
-ROW_H = 34
+ROW_H = 32
 HEADER_H = 30
 FOOTER_H = 34
-
-FONT_CHARS = set(" $%-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-FONT_SUBSTITUTES = {"_": "-", ",": ".", ";": ":", "!": ".", "?": ".", "&": ".", "=": ":", "+": "-", "|": "/"}
-
-
-def text(value):
-    """Uppercase and replace characters the 8x8 font cannot draw."""
-    result = []
-    for char in str(value).upper():
-        if char in FONT_CHARS:
-            result.append(char)
-        else:
-            result.append(FONT_SUBSTITUTES.get(char, " "))
-    return "".join(result)
-
-
-def fit(value, width, scale=1):
-    value = text(value)
-    limit = max(0, width // (8 * scale))
-    return value[:limit]
-
-
-def wrap(value, width, lines, scale=1):
-    """Wrap at spaces where possible; split words (and URLs) that are too long."""
-    limit = max(1, width // (8 * scale))
-    chunks = []
-    for word in text(value).split(" "):
-        if chunks and len(chunks[-1]) + 1 + len(word) <= limit:
-            chunks[-1] += " " + word
-            continue
-        while len(word) > limit:
-            chunks.append(word[:limit])
-            word = word[limit:]
-        chunks.append(word)
-    if len(chunks) > lines:
-        chunks = chunks[:lines]
-        chunks[-1] = chunks[-1][:-2] + ".."
-    return chunks
-
-
-def ago(seconds):
-    if seconds is None:
-        return "-"
-    seconds = max(0, int(seconds))
-    if seconds < 60:
-        return "%dS" % seconds
-    if seconds < 3600:
-        return "%dM" % (seconds // 60)
-    if seconds < 86400:
-        return "%dH %dM" % (seconds // 3600, seconds % 3600 // 60)
-    return "%dD %dH" % (seconds // 86400, seconds % 86400 // 3600)
-
-
-def visible_rect(fb):
-    if fb.rotate == 90:
-        return Rect(0, 0, fb.width, fb.height - 14)
-    if fb.rotate == 270:
-        return Rect(0, 14, fb.width, fb.height - 14)
-    if fb.rotate == 180:
-        return Rect(0, 0, fb.width - 14, fb.height)
-    return Rect(14, 0, fb.width - 14, fb.height)
-
-
-def env_number(env, name, default):
-    try:
-        return float(env.get(name, "") or default)
-    except ValueError:
-        return float(default)
-
 
 def worst(statuses):
     present = set(statuses)
@@ -226,14 +156,15 @@ def build_pages(monitor, rows_per_page):
 class Board:
     def __init__(self, ctx):
         self.ctx = ctx
-        self.view = visible_rect(ctx.fb)
+        self.layout = Layout(ctx.fb, HEADER_H, FOOTER_H)
+        self.pager = Pager(self.layout)
+        self.view = self.layout.view
         with (APP_DIR / "app.json").open("r", encoding="utf-8") as stream:
             self.version = json.load(stream).get("version", "?")
-        self.interval = env_number(ctx.env, "CHECK_INTERVAL", 60)
-        self.timeout = env_number(ctx.env, "CHECK_TIMEOUT", 6)
+        self.interval = kenv.number(ctx.env, "CHECK_INTERVAL", 60)
+        self.timeout = kenv.number(ctx.env, "CHECK_TIMEOUT", 6)
         self.monitor = None
         self.pages = []
-        self.page_index = 0
         self.detail = None
         self.title = "Homelab"
         self.source = ""
@@ -242,8 +173,8 @@ class Board:
         self.dirty = True
         self.drawn_version = -1
         self.drawn_at = 0.0
-        self.content_top = self.view.y + HEADER_H
-        self.content_bottom = self.view.y + self.view.h - FOOTER_H
+        self.content_top = self.layout.content.y
+        self.content_bottom = self.layout.footer.y
         self.rows_per_page = max(1, (self.content_bottom - self.content_top) // ROW_H)
         self.reload()
 
@@ -275,7 +206,7 @@ class Board:
         self.title = title or "Homelab"
         self.source = source
         self.pages = build_pages(monitor, self.rows_per_page)
-        self.page_index = min(self.page_index, len(self.pages) - 1)
+        self.pager.set_count(len(self.pages))
         self.detail = None
         self.monitor = monitor
         monitor.start()
@@ -286,32 +217,20 @@ class Board:
     def row_rect(self, index):
         return Rect(self.view.x + 2, self.content_top + index * ROW_H, self.view.w - 4, ROW_H - 3)
 
-    def footer_zones(self):
-        y = self.content_bottom
-        third = self.view.w // 3
-        return (Rect(self.view.x, y, third, FOOTER_H),
-                Rect(self.view.x + third, y, self.view.w - 2 * third, FOOTER_H),
-                Rect(self.view.x + self.view.w - third, y, third, FOOTER_H))
-
     def detail_buttons(self):
         y = self.view.y + self.view.h - 36
         half = (self.view.w - 40) // 2
         return (Rect(self.view.x + 16, y, half, 30),
                 Rect(self.view.x + 24 + half, y, half, 30))
 
-    # -- input --
-    def change_page(self, step):
-        if self.pages:
-            self.page_index = (self.page_index + step) % len(self.pages)
-            self.dirty = True
+    @property
+    def page_index(self):
+        return self.pager.index
 
+    # -- input --
     def on_swipe(self, kind, _x, _y):
-        if self.detail is not None:
-            return
-        if kind == SWIPE_UP:
-            self.change_page(1)
-        elif kind == SWIPE_DOWN:
-            self.change_page(-1)
+        if self.detail is None and self.pages and self.pager.on_swipe(kind):
+            self.dirty = True
 
     def on_tap(self, x, y):
         self.dirty = True
@@ -332,12 +251,7 @@ class Board:
             self.reload()
             return
         if y >= self.content_bottom:
-            previous, middle, following = self.footer_zones()
-            if previous.contains(x, y):
-                self.change_page(-1)
-            elif following.contains(x, y):
-                self.change_page(1)
-            elif middle.contains(x, y):
+            if self.pager.on_tap(x, y) == "middle":
                 self.monitor.check_now()
             return
         page = self.pages[self.page_index]
@@ -347,7 +261,7 @@ class Board:
                 section = page["sections"][index]
                 for page_index, candidate in enumerate(self.pages):
                     if candidate.get("section") is section:
-                        self.page_index = page_index
+                        self.pager.go(page_index)
                         break
         elif index < len(page["states"]):
             self.detail = page["states"][index]
@@ -406,11 +320,7 @@ class Board:
         checked = [state for state in states if state.status in (checks.UP, checks.WARN, checks.DOWN)]
         up = sum(1 for state in checked if state.status == checks.UP)
         summary = "%d/%d" % (up, len(checked)) if checked else "..."
-        summary_w = fb.text_width(summary, 2)
-        x = self.view.x + 8
-        fb.draw_text(x, self.view.y + 7, fit(label, self.view.w - summary_w - 26, 2), WHITE, 2)
-        fb.draw_text(self.view.x + self.view.w - summary_w - 8, self.view.y + 7, summary, STATUS_COLORS[status], 2)
-        fb.fill_rect(self.view.x + 4, self.view.y + HEADER_H - 4, self.view.w - 8, 1, BORDER)
+        self.pager.draw_header(fb, label, right=summary, right_color=STATUS_COLORS[status])
 
     def draw_overview(self, page):
         fb = self.ctx.fb
@@ -430,7 +340,7 @@ class Board:
             for state in states:
                 if x + 8 > rect.x + rect.w - 4:
                     break
-                fb.fill_rect(x, rect.y + 22, 8, 7, STATUS_COLORS[state.status])
+                fb.fill_rect(x, rect.y + 20, 8, 7, STATUS_COLORS[state.status])
                 x += 11
         self.draw_issues(self.content_top + len(page["sections"]) * ROW_H + 4)
 
@@ -449,6 +359,11 @@ class Board:
             fb.draw_text(x, top + 4, "ALL SERVICES UP", STATUS_COLORS[checks.UP], 1)
             return
         issues.sort(key=lambda state: SEVERITY.index(state.status))
+        if lines < 2:
+            # Room for one line only: count plus as many names as fit.
+            summary = "%d ISSUES: %s" % (len(issues), " / ".join(state.service["title"] for state in issues))
+            fb.draw_text(x, top + 4, fit(summary, width), STATUS_COLORS[issues[0].status], 1)
+            return
         fb.draw_text(x, top + 2, "ISSUES", DIM, 1)
         y = top + 15
         for index, state in enumerate(issues[:lines]):
@@ -479,19 +394,10 @@ class Board:
             detail = STATUS_LABELS[state.status] + "  " + state.message
             if state.status == checks.UP and state.code is not None:
                 detail = "UP  %d" % state.code
-            fb.draw_text(rect.x + 8, rect.y + 22, fit(detail, rect.w - right_w - 22), color, 1)
-            fb.draw_text(rect.x + rect.w - right_w - 6, rect.y + 22, right, SUBTLE, 1)
+            fb.draw_text(rect.x + 8, rect.y + 20, fit(detail, rect.w - right_w - 22), color, 1)
+            fb.draw_text(rect.x + rect.w - right_w - 6, rect.y + 20, right, SUBTLE, 1)
 
     def draw_footer(self):
-        fb = self.ctx.fb
-        previous, middle, following = self.footer_zones()
-        cy = previous.y + FOOTER_H // 2
-        if len(self.pages) > 1:
-            fb.draw_line(previous.cx + 4, cy - 7, previous.cx - 4, cy, WHITE)
-            fb.draw_line(previous.cx - 4, cy, previous.cx + 4, cy + 7, WHITE)
-            fb.draw_line(following.cx - 4, cy - 7, following.cx + 4, cy, WHITE)
-            fb.draw_line(following.cx + 4, cy, following.cx - 4, cy + 7, WHITE)
-        fb.text_center(middle.cx, cy - 10, "%d/%d" % (self.page_index + 1, len(self.pages)), SUBTLE, 1)
         if any(state.busy for state in self.monitor.states()):
             status = "CHECKING"
         elif self.monitor.last_round:
@@ -500,15 +406,15 @@ class Board:
             status = ""
         if self.source == "CACHED":
             status = "CACHED CFG"
-        fb.text_center(middle.cx, cy + 3, fit(status, middle.w + 20), DIM, 1)
+        self.pager.draw_footer(self.ctx.fb, status, DIM)
 
     def draw_detail(self, state):
         fb = self.ctx.fb
         service = state.service
         color = STATUS_COLORS[state.status]
-        x = self.view.x + 10
-        width = self.view.w - 20
         y = self.view.y + 8
+        left, right = self.layout.safe_span(y, y + 36)
+        x, width = left, right - left
         for line in wrap(service["title"], width, 2, 2):
             fb.draw_text(x, y, line, WHITE, 2)
             y += 20
@@ -561,7 +467,7 @@ class Board:
 
 @app()
 def main(ctx):
-    checks.install_mdns_fallback()
+    net.install_mdns_fallback()
     board = Board(ctx)
     try:
         ctx.run(board.tick, fps=10, on_tap=board.on_tap, on_swipe=board.on_swipe)

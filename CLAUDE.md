@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This checkout is the **catalog branch** (`main`) of NanoKVM Go Apps: the App
 store list shown under **Settings > Apps > Store** on a Sipeed NanoKVM Go. Each
-top-level directory (other than `_utils/`) is one self-contained App that runs
-on the device's touchscreen in Python.
+top-level directory (other than `_utils/` and `_lib/`) is one self-contained App
+that runs on the device's touchscreen in Python.
 
 The shared SDK (`appbase.py`, `appbase.pyi`) and the official development
 guide are **not on this branch**. They live on `origin/base`. Read them with:
@@ -47,9 +47,16 @@ Runtime pattern shared by every `main.py`:
   must be pre-rendered bitmaps (see the emoji-to-pixel-icon map in
   `macro-pad/main.py`). `memes/engine.py` adds a few punctuation glyphs
   (`! ' ? , + * < > &`) through its own `draw_text`.
-- After 90°/270° rotation the panel hides 14 px along one edge. Lay out
-  against `visible_rect()` (copied into each App, for example
-  `homelab-status/main.py`), not `ctx.height`.
+- The framebuffer is physically 240x284 (stride 480), so at the usual rotation
+  90 Apps get a **landscape 284x240** canvas. The SDK README's portrait tables
+  do not match this device. Layouts must adapt to `ctx.width`/`ctx.height`.
+- A calibration photo (2026-10-18) showed the whole 284x240 canvas: the
+  SDK's "14 px hidden strip" applies only to panels that are physically
+  284x240, not to this one. The panel has rounded corners of about 21 px
+  radius (`CORNER_RADIUS = 22`). Lay out against `kvmkit.screen.Layout`
+  (`visible_rect()`, `safe_span()`), never the raw canvas, so text near the
+  top and bottom edges stays clear of the corners. `_lib/kvmkit/screen.py`
+  is the single place to correct the geometry.
 - Drawing is pure Python: `fill_rect` along the physically contiguous axis
   (columns at the usual 90°/270° rotation) is cheap, a horizontal line costs
   one write per column, and text is drawn pixel by pixel. Redraw only when
@@ -63,6 +70,24 @@ Apps that send keyboard input to the USB-connected target computer (`macro-pad`,
 `MetaLeft` and `KeyA`). They need the protected `NANOKVM_MCP_KEY` env value from
 **Settings > AI > MCP Service**. They never touch `/dev/hidg*` directly.
 
+## Shared code: kvmkit
+
+`_lib/kvmkit/` is the master copy of the shared library: `screen` (visible
+area, rounded corners, `Layout`), `pager` (pagination with header and footer),
+`text` (8x8 font helpers), `theme` (colours), `env` (setting parsers) and
+`net` (mDNS for `.local` names). Apps install as self-contained ZIPs, so each
+App that imports `kvmkit` carries a generated copy in `<app>/kvmkit/`. Never
+edit those copies. Edit `_lib/kvmkit/`, then run:
+
+```sh
+python3 _utils/sync-kvmkit.py          # update every App's copy
+python3 _utils/sync-kvmkit.py --check  # fails if a copy is stale
+```
+
+The script finds Apps by their `import kvmkit` / `from kvmkit` lines. Home
+Assistant, Homelab and Device use its layout, pager, text and env helpers;
+Memes uses its screen geometry. Macro Pad still has its own helpers.
+
 ## Validation and tests
 
 There is no build step or linter. Before uploading, check the changed App:
@@ -72,12 +97,14 @@ python3 -m json.tool <app>/app.json >/dev/null
 python3 -m py_compile <app>/main.py
 ```
 
-Unit tests live in `voice-bridge/`, `macro-pad/`, `homelab-status/`,
-`device-dashboard/`, `home-assistant/` and `memes/`.
+Unit tests live in `_lib/` (kvmkit, including the stale-copy check),
+`voice-bridge/`, `macro-pad/`, `homelab-status/`, `device-dashboard/`,
+`home-assistant/` and `memes/`.
 They stub `appbase` (and, for `voice-bridge`, `aiortc`, `av` and `websockets`)
 in `sys.modules`, so they run off-device:
 
 ```sh
+python3 -m unittest discover -s _lib -p 'test_*.py'
 python3 -m unittest discover -s voice-bridge -p 'test_*.py'
 python3 -m unittest discover -s voice-bridge -p 'test_*.py' -k test_latest_app_manifest
 python3 -m unittest discover -s macro-pad -p 'test_*.py'

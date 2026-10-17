@@ -5,39 +5,21 @@ from __future__ import annotations
 
 import time
 
-from appbase import DOWN as SWIPE_DOWN, UP as SWIPE_UP, WHITE, Rect, app, rgb565
+from appbase import WHITE, Rect, app, rgb565
 
 import qr
 import sysinfo
+from kvmkit import env as kenv
+from kvmkit.pager import Pager
+from kvmkit.screen import Layout
+from kvmkit.text import fit, text
+from kvmkit.theme import BAD, BG, BORDER, DIM, GOOD, PANEL, SUBTLE, WARN
 
-BG = rgb565(10, 12, 18)
-PANEL = rgb565(24, 28, 38)
-BORDER = rgb565(60, 68, 86)
-SUBTLE = rgb565(150, 160, 175)
-DIM = rgb565(95, 102, 118)
-ACCENT = rgb565(90, 170, 210)
-GOOD = rgb565(40, 200, 110)
-WARN = rgb565(255, 170, 40)
-BAD = rgb565(240, 70, 70)
 QR_DARK = rgb565(0, 0, 0)
 QR_LIGHT = rgb565(255, 255, 255)
 
 HEADER_H = 30
 FOOTER_H = 34
-
-FONT_CHARS = set(" $%-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-FONT_SUBSTITUTES = {"_": "-", ",": ".", ";": ":", "!": ".", "?": ".", "&": ".", "=": ":", "+": "-", "|": "/"}
-
-
-def text(value):
-    """Uppercase and replace characters the 8x8 font cannot draw."""
-    return "".join(char if char in FONT_CHARS else FONT_SUBSTITUTES.get(char, " ")
-                   for char in str(value).upper())
-
-
-def fit(value, width, scale=1):
-    return text(value)[:max(0, width // (8 * scale))]
-
 
 def duration(seconds):
     seconds = int(seconds)
@@ -69,31 +51,17 @@ def level_color(value, warn, bad):
     return GOOD
 
 
-def visible_rect(fb):
-    if fb.rotate == 90:
-        return Rect(0, 0, fb.width, fb.height - 14)
-    if fb.rotate == 270:
-        return Rect(0, 14, fb.width, fb.height - 14)
-    if fb.rotate == 180:
-        return Rect(0, 0, fb.width - 14, fb.height)
-    return Rect(14, 0, fb.width - 14, fb.height)
-
-
 def parse_links(value):
     """Parse `Label=URL, URL, ...` into [(label, url)]."""
     links = []
-    for entry in value.replace("\n", ",").split(","):
-        entry = entry.strip()
-        if not entry:
-            continue
-        label, separator, url = entry.partition("=")
-        if separator and "/" not in label and ":" not in label:
-            label, url = label.strip(), url.strip()
-        else:
-            label, url = "", entry
-        if not label:
-            label = url.split("://", 1)[-1].split("/", 1)[0]
-        links.append((label, url))
+    for _name, entries in kenv.sections(value.replace(";", ",")):
+        for entry in entries:
+            label, url = kenv.pair(entry)
+            if url is None or "/" in label or ":" in label:
+                label, url = "", entry
+            if not label:
+                label = url.split("://", 1)[-1].split("/", 1)[0]
+            links.append((label, url))
     return links
 
 
@@ -101,10 +69,11 @@ class Dashboard:
     def __init__(self, ctx, info):
         self.ctx = ctx
         self.info = info
-        self.view = visible_rect(ctx.fb)
-        self.content_top = self.view.y + HEADER_H
-        self.content_bottom = self.view.y + self.view.h - FOOTER_H
-        self.page_index = 0
+        self.layout = Layout(ctx.fb, HEADER_H, FOOTER_H)
+        self.pager = Pager(self.layout)
+        self.view = self.layout.view
+        self.content_top = self.layout.content.y
+        self.content_bottom = self.layout.footer.y
         self.drawn_key = None
         self.qr_cache = {}
         env = ctx.env
@@ -113,6 +82,10 @@ class Dashboard:
         self.wifi_password = env.get("WIFI_PASSWORD") or ""
         self.wifi_security = (env.get("WIFI_SECURITY") or "WPA").strip() or "WPA"
         self.links = parse_links(env.get("QR_LINKS") or "")
+
+    @property
+    def page_index(self):
+        return self.pager.index
 
     # -- pages --
     def pages(self, snapshot):
@@ -132,31 +105,18 @@ class Dashboard:
             pages.append(("qr", label, url, url))
         return pages
 
-    def footer_zones(self):
-        y = self.content_bottom
-        third = self.view.w // 3
-        return (Rect(self.view.x, y, third, FOOTER_H),
-                Rect(self.view.x + self.view.w - third, y, third, FOOTER_H))
-
-    def change_page(self, step):
+    def sync_page_count(self):
         with self.info.lock:
-            count = len(self.pages(self.info.snapshot))
-        self.page_index = (self.page_index + step) % count
+            self.pager.set_count(len(self.pages(self.info.snapshot)) if self.info.snapshot else 1)
 
     def on_swipe(self, kind, _x, _y):
-        if kind == SWIPE_UP:
-            self.change_page(1)
-        elif kind == SWIPE_DOWN:
-            self.change_page(-1)
+        self.sync_page_count()
+        self.pager.on_swipe(kind)
 
     def on_tap(self, x, y):
-        if y < self.content_bottom:
-            return
-        previous, following = self.footer_zones()
-        if previous.contains(x, y):
-            self.change_page(-1)
-        elif following.contains(x, y):
-            self.change_page(1)
+        if y >= self.content_bottom:
+            self.sync_page_count()
+            self.pager.on_tap(x, y)
 
     # -- drawing --
     def tick(self, _dt):
@@ -165,8 +125,7 @@ class Dashboard:
             history = list(self.info.cpu_history)
             version = self.info.version
         pages = self.pages(snapshot) if snapshot else []
-        if pages:
-            self.page_index %= len(pages)
+        self.pager.set_count(len(pages))
         kind = pages[self.page_index][0] if pages else None
         # QR pages only change with their payload; live pages with every sample.
         if kind == "qr":
@@ -196,23 +155,10 @@ class Dashboard:
         self.draw_footer(len(pages))
 
     def draw_header(self, name, snapshot):
-        fb = self.ctx.fb
-        clock = snapshot.get("time", "")
-        clock_w = fb.text_width(clock, 2)
-        fb.draw_text(self.view.x + 8, self.view.y + 7, fit(name, self.view.w - clock_w - 26, 2), WHITE, 2)
-        fb.draw_text(self.view.x + self.view.w - clock_w - 8, self.view.y + 7, clock, SUBTLE, 2)
-        fb.fill_rect(self.view.x + 4, self.view.y + HEADER_H - 4, self.view.w - 8, 1, BORDER)
+        self.pager.draw_header(self.ctx.fb, name, right=snapshot.get("time", ""))
 
     def draw_footer(self, count):
-        fb = self.ctx.fb
-        previous, following = self.footer_zones()
-        cy = previous.y + FOOTER_H // 2
-        if count > 1:
-            fb.draw_line(previous.cx + 4, cy - 7, previous.cx - 4, cy, WHITE)
-            fb.draw_line(previous.cx - 4, cy, previous.cx + 4, cy + 7, WHITE)
-            fb.draw_line(following.cx - 4, cy - 7, following.cx + 4, cy, WHITE)
-            fb.draw_line(following.cx + 4, cy, following.cx - 4, cy + 7, WHITE)
-        fb.text_center(self.view.cx, cy - 4, "%d/%d" % (self.page_index + 1, count), SUBTLE, 1)
+        self.pager.draw_footer(self.ctx.fb)
 
     def tile(self, rect, label, value, color, detail="", fraction=None):
         fb = self.ctx.fb
@@ -231,8 +177,9 @@ class Dashboard:
         fb = self.ctx.fb
         x = self.view.x + 4
         gap = 6
+        wide = self.view.w > self.view.h
         tile_w = (self.view.w - 8 - gap) // 2
-        tile_h = 56
+        tile_h = 50 if wide else 56
         y = self.content_top
         cpu = snapshot.get("cpu")
         self.tile(Rect(x, y, tile_w, tile_h), "CPU", "-" if cpu is None else "%d%%" % round(cpu),
@@ -250,7 +197,9 @@ class Dashboard:
         self.tile(Rect(x + tile_w + gap, y, tile_w, tile_h), "DISK", "-" if disk is None else "%d%%" % round(disk),
                   level_color(disk, 80, 92), size(total), (disk or 0) / 100)
         y += tile_h + gap
-        graph = Rect(x, y, self.view.w - 8, 38)
+        # Landscape: the CPU graph and the text rows share the last band.
+        graph_w = tile_w if wide else self.view.w - 8
+        graph = Rect(x, y, graph_w, min(38, self.content_bottom - y - 2))
         fb.fill_rect(graph.x, graph.y, graph.w, graph.h, PANEL)
         fb.draw_text(graph.x + 6, graph.y + 4, "CPU %dS" % int(len(history) * self.info.fast_interval), DIM, 1)
         if history:
@@ -261,14 +210,18 @@ class Dashboard:
                 height = max(1, int(plot_h * min(100.0, value) / 100))
                 fb.fill_rect(bx, graph.y + graph.h - 3 - height, max(1, bar_w - 1), height, level_color(value, 70, 90))
                 bx += bar_w
-        y += graph.h + 8
+        if wide:
+            row_x, y = x + tile_w + gap, y + 4
+        else:
+            row_x, y = x, y + graph.h + 8
+        row_w = self.view.x + self.view.w - 4 - row_x
         load = " ".join(snapshot.get("load", []))
         rows = [("LOAD", load), ("UPTIME", duration(snapshot.get("uptime", 0))), ("HOST", snapshot.get("hostname", ""))]
         for label, value in rows:
             if y + 8 > self.content_bottom:
                 break
-            fb.draw_text(x + 6, y, label, DIM, 1)
-            fb.draw_text(x + 70, y, fit(value, self.view.w - 80), WHITE, 1)
+            fb.draw_text(row_x + 6, y, label, DIM, 1)
+            fb.draw_text(row_x + 62, y, fit(value, row_w - 64), WHITE, 1)
             y += 12
 
     def draw_network(self, snapshot):
@@ -277,7 +230,8 @@ class Dashboard:
         width = self.view.w - 8
         y = self.content_top
         wifi = snapshot.get("wifi") or {}
-        panel = Rect(x, y, width, 52)
+        wide = self.view.w > self.view.h
+        panel = Rect(x, y, width, 40 if wide else 52)
         fb.fill_rect(panel.x, panel.y, panel.w, panel.h, PANEL)
         if wifi:
             signal = wifi.get("signal")
@@ -286,14 +240,16 @@ class Dashboard:
             for index in range(4):
                 bar_h = 4 + index * 4
                 bx = panel.x + panel.w - 40 + index * 8
-                fb.fill_rect(bx, panel.y + 46 - bar_h, 6, bar_h, color if index < bars else BORDER)
+                fb.fill_rect(bx, panel.y + panel.h - 6 - bar_h, 6, bar_h, color if index < bars else BORDER)
             fb.draw_text(panel.x + 8, panel.y + 6, fit(wifi.get("ssid", "WI-FI"), panel.w - 12, 2), WHITE, 2)
             freq = wifi.get("freq")
             band = "%s GHZ" % ("2.4" if freq and freq < 3000 else ("6" if freq and freq > 5925 else "5")) if freq else ""
             channel = sysinfo.wifi_channel(freq)
             line = "%s DBM  %s%s" % (signal if signal is not None else "-", band, "  CH %d" % channel if channel else "")
-            fb.draw_text(panel.x + 8, panel.y + 28, fit(line, panel.w - 56), color, 1)
-            if wifi.get("tx_rate"):
+            if wide and wifi.get("tx_rate"):
+                line += "  %d MBIT/S" % wifi["tx_rate"]
+            fb.draw_text(panel.x + 8, panel.y + 26, fit(line, panel.w - 56), color, 1)
+            if not wide and wifi.get("tx_rate"):
                 fb.draw_text(panel.x + 8, panel.y + 40, "%d MBIT/S" % wifi["tx_rate"], SUBTLE, 1)
         else:
             fb.draw_text(panel.x + 8, panel.y + 8, "WI-FI", WHITE, 2)
@@ -317,24 +273,37 @@ class Dashboard:
         if tailscale:
             state = tailscale["state"]
             rows.append(("TAILSCALE", state, GOOD if state == "UP" else WARN, tailscale.get("ip") or "-"))
+        # Rows shrink a little in landscape so every interface still fits.
+        footer_lines = 14 if wide else 26
+        row_h = max(26, min(32, (self.content_bottom - y - footer_lines) // max(1, len(rows))))
         for label, state, color, address in rows:
-            if y + 30 > self.content_bottom - 24:
+            if y + 26 > self.content_bottom - footer_lines:
                 break
             fb.draw_text(x + 6, y, fit(label, width - 100), DIM, 1)
             fb.draw_text(x + width - fb.text_width(state) - 6, y, state, color, 1)
-            fb.draw_text(x + 6, y + 11, fit(address, width - 8, 2), WHITE if address[0].isdigit() else DIM, 2)
-            y += 32
+            fb.draw_text(x + 6, y + 10, fit(address, width - 8, 2), WHITE if address[0].isdigit() else DIM, 2)
+            y += row_h
         usb = snapshot.get("usb", "unknown")
         usb_text, usb_color = {
             "configured": ("CONNECTED", GOOD),
             "not attached": ("UNPLUGGED", DIM),
         }.get(usb, (usb.upper(), WARN))
+        hid = "ON" if snapshot.get("hid") else "OFF"
+        hid_color = GOOD if hid == "ON" else WARN
+        if wide:
+            # One line, two columns: TARGET USB ... | KEYBOARD/MOUSE ...
+            y = self.content_bottom - 12
+            half = width // 2
+            fb.draw_text(x + 6, y, "USB", DIM, 1)
+            fb.draw_text(x + half - 6 - fb.text_width(usb_text), y, usb_text, usb_color, 1)
+            fb.draw_text(x + half + 6, y, "KEYS/MOUSE", DIM, 1)
+            fb.draw_text(x + width - fb.text_width(hid) - 6, y, hid, hid_color, 1)
+            return
         y = max(y, self.content_bottom - 24)
         fb.draw_text(x + 6, y, "TARGET USB", DIM, 1)
         fb.draw_text(x + width - fb.text_width(usb_text) - 6, y, usb_text, usb_color, 1)
-        hid = "ON" if snapshot.get("hid") else "OFF"
         fb.draw_text(x + 6, y + 12, "KEYBOARD/MOUSE", DIM, 1)
-        fb.draw_text(x + width - fb.text_width(hid) - 6, y + 12, hid, GOOD if hid == "ON" else WARN, 1)
+        fb.draw_text(x + width - fb.text_width(hid) - 6, y + 12, hid, hid_color, 1)
 
     def qr_matrix(self, payload):
         if payload not in self.qr_cache:

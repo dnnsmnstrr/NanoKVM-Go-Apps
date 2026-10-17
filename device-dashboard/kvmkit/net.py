@@ -1,8 +1,9 @@
-"""`.local` name lookup over mDNS (copied from homelab-status/checks.py).
+# Generated from _lib/kvmkit/net.py by _utils/sync-kvmkit.py. Edit the master copy.
+"""`.local` name lookup over mDNS.
 
 The NanoKVM's libc cannot resolve mDNS names, so `install_mdns_fallback()`
 wraps `socket.getaddrinfo` and queries the network directly when a `.local`
-lookup fails. That makes the default `http://homeassistant.local:8123` work.
+lookup fails. Every urllib/http.client request then works with `.local` URLs.
 """
 
 from __future__ import annotations

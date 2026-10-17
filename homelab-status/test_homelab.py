@@ -1,7 +1,6 @@
 """Off-device tests for the Dashy parser, mDNS decoding and the monitor."""
 
 import socket
-import struct
 import sys
 import time
 import types
@@ -110,31 +109,6 @@ class ExtractTests(unittest.TestCase):
         plex = sections[2]["items"][0]
         self.assertFalse(plex["enabled"])
         self.assertEqual(plex["check_url"], "")
-
-
-def dns_name(name):
-    return b"".join(bytes([len(part)]) + part.encode() for part in name.split(".")) + b"\x00"
-
-
-class MdnsTests(unittest.TestCase):
-    def test_query_sets_unicast_bit(self):
-        packet = checks.build_mdns_query("pi.local", 7)
-        self.assertEqual(struct.unpack(">HHHHHH", packet[:12]), (7, 0, 1, 0, 0, 0))
-        self.assertTrue(packet.endswith(dns_name("pi.local") + struct.pack(">HH", 1, 0x8001)))
-
-    def test_parse_compressed_answer(self):
-        header = struct.pack(">HHHHHH", 0, 0x8400, 1, 2, 0, 0)
-        question = dns_name("pi.local") + struct.pack(">HH", 1, 1)
-        # First answer is an AAAA for the same name (ignored), then the A record
-        # with a compression pointer back to the question name at offset 12.
-        aaaa = b"\xc0\x0c" + struct.pack(">HHIH", 28, 0x8001, 120, 16) + bytes(16)
-        a_record = b"\xc0\x0c" + struct.pack(">HHIH", 1, 0x8001, 120, 4) + socket.inet_aton("192.168.1.74")
-        answer = checks.parse_mdns_answer(header + question + aaaa + a_record, "PI.local.")
-        self.assertEqual(answer, ("192.168.1.74", 120))
-
-    def test_parse_rejects_queries_and_garbage(self):
-        self.assertIsNone(checks.parse_mdns_answer(checks.build_mdns_query("pi.local"), "pi.local"))
-        self.assertIsNone(checks.parse_mdns_answer(b"\x00\x00\x84\x00\x00\x01", "pi.local"))
 
 
 class CheckTests(unittest.TestCase):

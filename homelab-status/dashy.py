@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import re
 
+from kvmkit import env as kenv
+
 
 class YamlError(ValueError):
     pass
@@ -315,29 +317,16 @@ def _shorthand_items(value):
 def _parse_link_list(text):
     """`Section: Title=url, url; Other: ...` -> Dashy sections."""
     sections = []
-    for chunk in text.replace("\n", ";").split(";"):
-        chunk = chunk.strip()
-        if not chunk:
-            continue
-        name = "Services"
-        colon = chunk.find(":")
-        head = chunk[:colon]
-        # "Server: Gitea=http://..." names a section; "http://..." does not.
-        if colon > 0 and "=" not in head and "/" not in head and chunk[colon + 1:colon + 2] != "/":
-            name, chunk = head.strip(), chunk[colon + 1:]
+    for name, entries in kenv.sections(text, "Services"):
         items = []
-        for entry in chunk.split(","):
-            entry = entry.strip()
-            if not entry:
-                continue
-            title, separator, url = entry.partition("=")
-            if separator and "/" not in title and ":" not in title:
-                items.append({"title": title.strip(), "url": url.strip()})
-            else:
+        for entry in entries:
+            title, url = kenv.pair(entry)
+            if url is None or "/" in title or ":" in title:
                 host = entry.split("://", 1)[-1].split("/", 1)[0]
                 items.append({"title": host, "url": entry})
-        if items:
-            sections.append({"name": name, "items": items})
+            else:
+                items.append({"title": title, "url": url})
+        sections.append({"name": name, "items": items})
     return {"sections": sections}
 
 
