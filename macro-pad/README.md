@@ -112,6 +112,9 @@ The example Clear button sends `@MOD+KeyA` followed by `Backspace`, clearing
 the focused input field. On macOS, `@MOD` is `MetaLeft` (Command); on
 Windows/Linux, set the top-level modifier to `ControlLeft`.
 
+The example Clipboard page also includes a Raycast button using
+`ControlLeft+Space`.
+
 URL buttons launch/focus the browser with the configured Hyper+W shortcut,
 then focus the address bar with `@MOD+KeyL`, type the URL, and press Enter.
 The example NanoKVM button opens `https://192.168.178.83` on the target
