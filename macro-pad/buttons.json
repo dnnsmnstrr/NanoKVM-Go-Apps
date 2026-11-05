@@ -25,8 +25,8 @@
       "buttons": [
         {"label": "Space", "icon": "▶", "keys": ["Space"]},
         {"label": "Skip", "icon": "→", "keys": ["ArrowRight"]},
-        {"label": "Volume Up", "icon": "🔊", "keys": ["VolumeUp"]},
-        {"label": "Volume Down", "icon": "🔉", "keys": ["VolumeDown"]}
+        {"label": "Volume Down", "icon": "🔉", "keys": ["VolumeDown"]},
+        {"label": "Volume Up", "icon": "🔊", "keys": ["VolumeUp"]}
       ]
     },
     {

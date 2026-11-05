@@ -128,6 +128,13 @@ class TextTests(unittest.TestCase):
         self.assertEqual(text.ago(3725), "1H 2M")
         self.assertEqual(text.ago(None), "-")
 
+    def test_keeping_extra_glyphs(self):
+        self.assertEqual(text.text("Here's [x] (y), \"z\"!"), "HERES  X   Y .  Z .")
+        self.assertEqual(text.text("Here's [x] (y), \"z\"!", extra=True), "HERE'S [X] (Y), \"Z\"!")
+        for char, rows in text.EXTRA_GLYPHS.items():
+            self.assertEqual(len(rows), 8, char)
+            self.assertTrue(all(len(row) == 8 for row in rows), char)
+
     def test_extra_glyphs(self):
         fb = FakeFB()
         text.draw_text(fb, 0, 0, "IT'S!", 0xFFFF, 1)

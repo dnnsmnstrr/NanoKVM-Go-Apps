@@ -1,0 +1,29 @@
+{
+  "app_id": "com.example.web_view",
+  "name": "Web View",
+  "creator": "NanoKVM Community",
+  "create_time": "2026-10-18",
+  "version": "0.1.0",
+  "desc": "Shows a web page from the App settings in reader mode: text, headings, lists, tables and tappable links.",
+  "category": "utility",
+  "env": {
+    "WEB_URL": {
+      "label": "Page URL",
+      "description": "The page to show, for example https://text.npr.org or http://raspberrypi.local:8085. Pages that need JavaScript show little or nothing.",
+      "required": false,
+      "default": ""
+    },
+    "WEB_REFRESH": {
+      "label": "Refresh (seconds)",
+      "description": "Reload the page this often, keeping the current page position. 0 turns it off.",
+      "required": false,
+      "default": "0"
+    },
+    "WEB_TEXT_SIZE": {
+      "label": "Text size",
+      "description": "small (34 characters per line) or large (17 characters per line).",
+      "required": false,
+      "default": "small"
+    }
+  }
+}
